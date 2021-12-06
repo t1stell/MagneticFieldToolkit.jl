@@ -1,0 +1,13 @@
+name = "FieldlineTracing"
+uuid = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
+authors = ["Benjamin Faber <bfaber@wisc.edu> and contributors"]
+version = "0.1.0"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+julia = "1.6"
+
+[targets]
+test = ["Test"]
