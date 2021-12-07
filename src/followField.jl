@@ -1,7 +1,8 @@
 
 
 
-function followField(bf::BField, rzp::Array{Float64}, phiEnd::Float64, phiStep::Float64)
+function followField(itp::BFieldInterpolator, rzp::Array{Float64}, 
+                     phiEnd::Float64, phiStep::Float64)
   phiStart = rzp[3]
   u = [rzp[1], rzp[2]]
   phiRange = phiStart:phiStep:phiEnd
@@ -17,8 +18,8 @@ function followField(bf::BField, rzp::Array{Float64}, phiEnd::Float64, phiStep::
     count += 1
     phiSpan = (ϕ, ϕ+phiStep)
     println("at phi: ",ϕ," count ",count, " phiSpan ",phiSpan)
-    prob = ODEProblem(fieldDerivPhi!,u,phiSpan,bf)
-    sol = solve(prob)
+    prob = ODEProblem(fieldDerivPhi!,u,phiSpan,itp)
+    sol = solve(prob,Tsit5())
 
     rvals[count] = sol.u[end][1]
     zvals[count] = sol.u[end][2]
@@ -32,10 +33,11 @@ function followField(bf::BField, rzp::Array{Float64}, phiEnd::Float64, phiStep::
 end
 
 
-function fieldDerivPhi!(du::Array{Float64}, u::Array{Float64}, bf::BField, ϕ::Float64)
+function fieldDerivPhi!(du::Array{Float64}, u::Array{Float64}, 
+                        itp::BFieldInterpolator, ϕ::Float64)
   r = u[1]
   z = u[2]
-  br, bz, bp = bfieldAt(bf, r, z, ϕ)
+  br, bz, bp = itp(r, z, ϕ)
   du[1] = r * br/bp
   du[2] = r * bz/bp
 end
