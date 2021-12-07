@@ -5,7 +5,7 @@ using NetCDF
 using Interpolations
 using ApproxFun
 using IntervalSets
-using DifferentialEquations
+using OrdinaryDiffEq
 using Polyester
 
 include("bfieldUtils.jl")

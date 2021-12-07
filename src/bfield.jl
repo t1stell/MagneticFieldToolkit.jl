@@ -102,6 +102,7 @@ function read_BMW(filename::AbstractString;
 end
 
 function BFieldInterpolator(bfield::BField{T};
+                            space = Chebyshev,
                             coeff_threshold::T = 10^(-4),
                            ) where {T}
   ϕ_knots = range(first(bfield.ϕ_range)-step(bfield.ϕ_range)*bfield.padding,step=step(bfield.ϕ_range),length=length(bfield.ϕ_range)+2*bfield.padding)
@@ -113,7 +114,7 @@ function BFieldInterpolator(bfield::BField{T};
   N = length(ϕ_knots)
   M = bfield.n_modes
 
-  S = Chebyshev(first(ϕ_knots)..last(ϕ_knots))
+  S = space(first(ϕ_knots)..last(ϕ_knots))
   @debug "Interpolation space: $S"
   V = Array{T}(undef, N, M)
   @debug "Size of Vandermonde matrix: $(size(V))"
@@ -126,7 +127,7 @@ function BFieldInterpolator(bfield::BField{T};
   Br_coeff_grid = Array{Float64,3}(undef, M, nr, nz)
   Bz_coeff_grid = similar(Br_coeff_grid)
   Bϕ_coeff_grid = similar(Br_coeff_grid)
-  
+
   for z in 1:nz
     for r in 1:nr
       @inbounds Br_coeff_grid[:, r, z] = coefficients(Fun(S, V \ view(bfield.br_grid, r, z, :)))

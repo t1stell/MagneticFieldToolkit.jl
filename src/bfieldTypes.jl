@@ -3,7 +3,7 @@ struct BFieldInterpolator{T<:AbstractFloat}
   Br_coeffs::Vector{Interpolations.Extrapolation}
   Bz_coeffs::Vector{Interpolations.Extrapolation}
   Bϕ_coeffs::Vector{Interpolations.Extrapolation}
-  space::Chebyshev{ClosedInterval{T}, T}
+  space::Space
   modes::UnitRange
 end
 
