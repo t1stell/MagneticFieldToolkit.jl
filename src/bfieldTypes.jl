@@ -4,6 +4,7 @@ struct BFieldInterpolator{T<:AbstractFloat}
   Bz_coeffs::Vector{Interpolations.Extrapolation}
   Bϕ_coeffs::Vector{Interpolations.Extrapolation}
   space::Chebyshev{ClosedInterval{T}, T}
+  modes::UnitRange
 end
 
 
@@ -13,6 +14,7 @@ mutable struct BField{T<:AbstractFloat}
   nphi::Integer
   nfp::Integer
   n_modes::Integer
+  padding::Integer
 
   rmin::T
   zmin::T
@@ -35,6 +37,7 @@ function BField(nr::Integer,
                 nz::Integer,
                 nphi::Integer;
                 n_modes::Integer = div(nϕ,2),
+                padding::Integer = 5,
                 T::Type=Float64,
                )
 
@@ -47,19 +50,20 @@ function BField(nr::Integer,
 
   r = zeros(T,nr)
   z = zeros(T,nz)
-  phi = zeros(T,nz)
+  phi = zeros(T,nphi)
 
   r_range = 0.0:1.0:1.0
   z_range = 0.0:1.0:1.0
   ϕ_range = 0.0:1.0:1.0
 
   #note this gets read in reverse order from the netcdf file
-  br_grid = zeros(T,nr,nz,nphi)
-  bz_grid = zeros(T,nr,nz,nphi)
-  bp_grid = zeros(T,nr,nz,nphi)
+  br_grid = zeros(T,nr,nz,nphi+2*padding)
+  bz_grid = zeros(T,nr,nz,nphi+2*padding)
+  bp_grid = zeros(T,nr,nz,nphi+2*padding)
 
-  BField{T}(nr,nz,nphi,n_modes,nfp,rmin,zmin,rmax,zmax,
-            r,z,phi,r_range, z_range, ϕ_range,
+  BField{T}(nr, nz, nphi, nfp, n_modes, padding,
+            rmin, zmin, rmax, zmax,
+            r, z, phi, r_range, z_range, ϕ_range,
             br_grid, bz_grid, bp_grid)
 
 end
