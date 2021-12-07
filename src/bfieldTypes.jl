@@ -5,6 +5,7 @@ struct BFieldInterpolator{T<:AbstractFloat}
   Bϕ_coeffs::Vector{Interpolations.Extrapolation}
   space::Space
   modes::UnitRange
+  nfp::Integer
 end
 
 
@@ -36,7 +37,7 @@ end
 function BField(nr::Integer,
                 nz::Integer,
                 nphi::Integer;
-                n_modes::Integer = div(nϕ,2),
+                n_modes::Integer = div(nphi,2),
                 padding::Integer = 5,
                 T::Type=Float64,
                )

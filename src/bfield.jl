@@ -148,7 +148,7 @@ function BFieldInterpolator(bfield::BField{T};
   end
   @debug "Constructed coefficient interpolators"
 
-  BFieldInterpolator{T}(Br_coeffs, Bz_coeffs, Bϕ_coeffs, S, 1:bfield.n_modes)
+  BFieldInterpolator{T}(Br_coeffs, Bz_coeffs, Bϕ_coeffs, S, 1:bfield.n_modes, bfield.nfp)
 
 end
 
@@ -156,6 +156,7 @@ function (itp::BFieldInterpolator)(r::T,
                                    z::T,
                                    ϕ::T;
                                   ) where {T}
+  ϕ = mod(ϕ, 2*π/itp.nfp)
   Br = Fun(itp.space, [itp.Br_coeffs[m](r,z) for m in itp.modes])
   Bz = Fun(itp.space, [itp.Bz_coeffs[m](r,z) for m in itp.modes])
   Bϕ = Fun(itp.space, [itp.Bϕ_coeffs[m](r,z) for m in itp.modes])
