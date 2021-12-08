@@ -16,6 +16,7 @@ mutable struct BField{T<:AbstractFloat}
   nfp::Integer
   n_modes::Integer
   padding::Integer
+  external_coils::Integer
 
   rmin::T
   zmin::T
@@ -39,6 +40,7 @@ function BField(nr::Integer,
                 nphi::Integer;
                 n_modes::Integer = div(nphi,2),
                 padding::Integer = 5,
+                external_coils::Integer = 1,
                 T::Type=Float64,
                )
 
@@ -62,7 +64,7 @@ function BField(nr::Integer,
   bz_grid = zeros(T,nr,nz,nphi+2*padding)
   bp_grid = zeros(T,nr,nz,nphi+2*padding)
 
-  BField{T}(nr, nz, nphi, nfp, n_modes, padding,
+  BField{T}(nr, nz, nphi, nfp, n_modes, padding, external_coils,
             rmin, zmin, rmax, zmax,
             r, z, phi, r_range, z_range, ϕ_range,
             br_grid, bz_grid, bp_grid)
