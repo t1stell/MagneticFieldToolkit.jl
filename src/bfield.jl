@@ -19,7 +19,9 @@ Read a NetCDF BMW file and store the result in a `BField` type.
 # See also: [`BField`](@ref)
 """
 function readBMW(filename::AbstractString;
-                )
+                  n_modes::Integer=0,
+                  padding::Integer=5,
+                 )
   bmwnetcdf = NetCDF.open(filename)
   bmwVars = bmwnetcdf.vars
   bmwDims = bmwnetcdf.dim
@@ -46,10 +48,19 @@ function readBMW(filename::AbstractString;
     end
   end
 
+  #How many values are in the FFT
+  n_modes = n_modes > div(nphi,2) ? n_modes : div(nphi,2)
+  @debug "Number of modes used for Chebyshev interpolation: $n_modes"
   floatType = eltype(NetCDF.readvar(bmwVars["rmin"]))
 
-  bmw = BField(nr, nz, nphi; T=floatType)
+  bmw = BField(nr, nz, nphi; n_modes=n_modes, padding=padding, T=floatType)
+  bmw.nr = nr
+  bmw.nz = nz
+  bmw.nphi = nphi
+  bmw.n_modes = n_modes
+  bmw.padding = padding
 
+  extended_data = zeros(floatType, nr, nz, nphi+2*padding)
   #this loop looks through all the variables in bmwVars and
   #checks if any appear in the array, if they do, then it
   #copies the data into them
@@ -59,13 +70,18 @@ function readBMW(filename::AbstractString;
       T = typeof(getfield(bmw, varSymbol))
       var_data = NetCDF.readvar(var.second)
       if T <: Array
-        setfield!(bmw, varSymbol, convert(T,var_data))
+        # Pad either end of the array using periodic BCs
+        extended_data[:, :, 1+padding:nphi+padding] = convert.(eltype(T), var_data)
+        extended_data[:, :, 1:padding] = extended_data[:, :, nphi+1:nphi+padding]
+        extended_data[:, :, nphi+padding+1:end] = extended_data[:, :, padding+1:2*padding]
+        setfield!(bmw, varSymbol, copy(extended_data))
         @debug "Set BField variable $varSymbol"
+        fill!(extended_data, zero(eltype(T)))
       elseif T <: Number
-        setfield!(bmw, varSymbol, convert(T,var_data[1]))
+        setfield!(bmw, varSymbol,convert(T,var_data[1]))
         @debug "Set BField variable $varSymbol = $(getfield(bmw, varSymbol))"
       elseif T <: String
-        setfield!(bmw, varSymbol, string(strip(string(var_data...))))
+        setfield!(bmw, varSymbol,string(strip(string(var_data...))))
         @debug "Set BField variable $varSymbol = $(getfield(bmw, varSymbol))"
       else
         throw(TypeError("No type given for $(var)!"))
@@ -85,32 +101,61 @@ function readBMW(filename::AbstractString;
   return bmw
 end
 
-"""
-    BFieldInterpolator(bfield::BField)
-
-Construct a callable `BFieldInterpolator` from a `BField` type.
-For `itp::BFieldInterpolator`, the interpolated values of the
-magnetic field components are obtained by `itp(x1,x2,x3)` for
-the coordinates `(x1,x2,x3)`.
-"""
 function BFieldInterpolator(bfield::BField{T};
+                            space = Chebyshev,
+                            coeff_threshold::T = 10^(-4),
                            ) where {T}
-  ϕ_knots = bfield.ϕ_range
+  ϕ_knots = range(first(bfield.ϕ_range)-step(bfield.ϕ_range)*bfield.padding,step=step(bfield.ϕ_range),length=length(bfield.ϕ_range)+2*bfield.padding)
   r_knots = bfield.r_range
   z_knots = bfield.z_range
+  nr = bfield.nr
+  nz = bfield.nz
 
-  Br = CubicSplineInterpolation((r_knots, z_knots, ϕ_knots), bfield.br_grid)
-  Bz = CubicSplineInterpolation((r_knots, z_knots, ϕ_knots), bfield.bz_grid)
-  Bϕ = CubicSplineInterpolation((r_knots, z_knots, ϕ_knots), bfield.bp_grid)
+  N = length(ϕ_knots)
+  M = bfield.n_modes
 
-  BFieldInterpolator{T}(Br, Bz, Bϕ, bfield.nfp)
+  S = space(first(ϕ_knots)..last(ϕ_knots))
+  @debug "Interpolation space: $S"
+  V = Array{T}(undef, N, M)
+  @debug "Size of Vandermonde matrix: $(size(V))"
+
+  @batch minbatch=64 for k in 1:M
+    V[:, k] = Fun(S, [zeros(k-1);1]).(ϕ_knots)
+  end
+  @debug "Constructed Vandermonde matrix"
+
+  Br_coeff_grid = Array{Float64,3}(undef, M, nr, nz)
+  Bz_coeff_grid = similar(Br_coeff_grid)
+  Bϕ_coeff_grid = similar(Br_coeff_grid)
+
+  for z in 1:nz
+    for r in 1:nr
+      @inbounds Br_coeff_grid[:, r, z] = coefficients(Fun(S, V \ view(bfield.br_grid, r, z, :)))
+      @inbounds Bz_coeff_grid[:, r, z] = coefficients(Fun(S, V \ view(bfield.bz_grid, r, z, :)))
+      @inbounds Bϕ_coeff_grid[:, r, z] = coefficients(Fun(S, V \ view(bfield.bp_grid, r, z, :)))
+    end
+  end
+  @debug "Constructed coefficient grids"
+
+
+  Br_coeffs = Vector{Interpolations.Extrapolation}(undef,M)
+  Bz_coeffs = similar(Br_coeffs)
+  Bϕ_coeffs = similar(Br_coeffs)
+  @batch for m in 1:M
+    Br_coeffs[m] = CubicSplineInterpolation((r_knots, z_knots), Br_coeff_grid[m,:,:])
+    Bz_coeffs[m] = CubicSplineInterpolation((r_knots, z_knots), Bz_coeff_grid[m,:,:])
+    Bϕ_coeffs[m] = CubicSplineInterpolation((r_knots, z_knots), Bϕ_coeff_grid[m,:,:])
+  end
+  @debug "Constructed coefficient interpolators"
+
+  BFieldInterpolator{T}(Br_coeffs, Bz_coeffs, Bϕ_coeffs, S, 1:bfield.n_modes, bfield.nfp)
 
 end
 
 function readMgrid(filename::AbstractString, current::Vector{Float64};
                    n_modes::Integer = 0, padding::Integer=5,
                   )
-
+  
   mgridnetcdf = NetCDF.open(filename)
   mgridVars = mgridnetcdf.vars
   mgridDims = mgridnetcdf.dim
@@ -136,8 +181,8 @@ function readMgrid(filename::AbstractString, current::Vector{Float64};
   n_modes = n_modes > div(nphi, 2) ? n_modes : div(nphi, 2)
   floatType = eltype(NetCDF.readvar(mgridVars["rmin"]))
 
-  mg = BField(nr, nz, nphi; n_modes=n_modes,
-               external_coils = external_coils, padding=padding)
+  mg = BField(nr, nz, nphi; n_modes=n_modes, 
+               external_coils = external_coils, padding=padding) 
 
   mg.nr = nr
   mg.nz = nz
@@ -156,12 +201,12 @@ function readMgrid(filename::AbstractString, current::Vector{Float64};
     varSymbol = Symbol(var.first)
     var_data = NetCDF.readvar(var.second)
     varString = String(var.first)
-
+   
     #Special handling for the field values
-    if  (occursin("bp_", varString) || occursin("bz_", varString) ||
+    if  (occursin("bp_", varString) || occursin("bz_", varString) || 
         occursin("br_", varString))
 
-
+      
       T = typeof(getfield(mg, Symbol("bp_grid")))
       #get the index
       i = parse(Int64, varString[4:end])
@@ -179,7 +224,7 @@ function readMgrid(filename::AbstractString, current::Vector{Float64};
       elseif occursin("br_", varString)
         br_grid += copy(b_temp)
       end
-
+    
     #handle the other properties which are named the same
     elseif hasproperty(mg, varSymbol)
       T = typeof(getfield(mg, varSymbol))
@@ -210,7 +255,8 @@ function readMgrid(filename::AbstractString, current::Vector{Float64};
 
   return mg
 
-end
+end  
+
 
 function (itp::BFieldInterpolator)(r::T,
                                    z::T,
@@ -218,10 +264,16 @@ function (itp::BFieldInterpolator)(r::T,
                                    xyz = false
                                   ) where {T}
   ϕ = mod(ϕ, 2*π/itp.nfp)
-  Br = itp.Br(r,z,ϕ)
-  Bz = itp.Bz(r,z,ϕ)
-  Bϕ = itp.Bϕ(r,z,ϕ)
+  Br = Fun(itp.space, [itp.Br_coeffs[m](r,z) for m in itp.modes])
+  Bz = Fun(itp.space, [itp.Bz_coeffs[m](r,z) for m in itp.modes])
+  Bϕ = Fun(itp.space, [itp.Bϕ_coeffs[m](r,z) for m in itp.modes])
 
-  return !xyz ? (Br, Bz, Bϕ) :
-    (Br * cos(ϕ) - Bϕ * sin(ϕ), Br * sin(ϕ) + Bϕ * cos(ϕ), Bz)
+  if xyz
+    Br = Br(ϕ)
+    Bϕ = Bϕ(ϕ)
+    Bx = Br * cos(ϕ) - Bϕ * sin(ϕ)
+    By = Br * sin(ϕ) + Bϕ * cos(ϕ)
+    return (Bx, By, Bz(ϕ))
+  end
+  return (Br(ϕ), Bz(ϕ), Bϕ(ϕ))
 end

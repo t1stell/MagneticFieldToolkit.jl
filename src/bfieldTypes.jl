@@ -1,8 +1,10 @@
 
 struct BFieldInterpolator{T<:AbstractFloat}
-  Br::Interpolations.Extrapolation
-  Bz::Interpolations.Extrapolation
-  Bϕ::Interpolations.Extrapolation
+  Br_coeffs::Vector{Interpolations.Extrapolation}
+  Bz_coeffs::Vector{Interpolations.Extrapolation}
+  Bϕ_coeffs::Vector{Interpolations.Extrapolation}
+  space::Space
+  modes::UnitRange
   nfp::Integer
 end
 
@@ -58,9 +60,9 @@ function BField(nr::Integer,
   ϕ_range = 0.0:1.0:1.0
 
   #note this gets read in reverse order from the netcdf file
-  br_grid = zeros(T,nr,nz,nphi)
-  bz_grid = zeros(T,nr,nz,nphi)
-  bp_grid = zeros(T,nr,nz,nphi)
+  br_grid = zeros(T,nr,nz,nphi+2*padding)
+  bz_grid = zeros(T,nr,nz,nphi+2*padding)
+  bp_grid = zeros(T,nr,nz,nphi+2*padding)
 
   BField{T}(nr, nz, nphi, nfp, n_modes, padding, external_coils,
             rmin, zmin, rmax, zmax,
