@@ -9,9 +9,15 @@ function followField(itp::BFieldInterpolator,
                     )
   phiStart = rzp[3]
   u = @SVector [rzp[1], rzp[2]]
-  phiSpan = (0.0,phiEnd)
+  phiSpan = (phiStart,phiEnd)
   prob = ODEProblem(fieldDerivPhi, u, phiSpan, itp)
-  sol = solve(prob, Tsit5(), dtmax=phiStep, saveat = poincare ? 2π : [])
+  if poincare
+    N = abs(phiEnd - phiStart)/(2*π/itp.nfp)
+    saveat = [i * 2*π/itp.nfp + phiStart for i in 1:N]
+  else
+    saveat = []
+  end
+  sol = solve(prob, Tsit5(), dtmax=phiStep, saveat = saveat)
 
 end
 
