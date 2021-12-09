@@ -3,8 +3,6 @@ module FieldlineTracing
 using StaticArrays
 using NetCDF
 using Interpolations
-using ApproxFun
-using IntervalSets
 using Polyester
 using OrdinaryDiffEq
 
