@@ -3,10 +3,8 @@ module FieldlineTracing
 using StaticArrays
 using NetCDF
 using Interpolations
-using ApproxFun
-using IntervalSets
-using DifferentialEquations
 using Polyester
+using OrdinaryDiffEq
 
 include("bfieldUtils.jl")
 include("bfieldTypes.jl")

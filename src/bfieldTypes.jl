@@ -1,9 +1,9 @@
 
 struct BFieldInterpolator{T<:AbstractFloat}
-  Br_coeffs::Vector{Interpolations.Extrapolation}
-  Bz_coeffs::Vector{Interpolations.Extrapolation}
-  Bϕ_coeffs::Vector{Interpolations.Extrapolation}
-  space::Chebyshev{ClosedInterval{T}, T}
+  Br::Interpolations.Extrapolation
+  Bz::Interpolations.Extrapolation
+  Bϕ::Interpolations.Extrapolation
+  nfp::Integer
 end
 
 
@@ -13,6 +13,8 @@ mutable struct BField{T<:AbstractFloat}
   nphi::Integer
   nfp::Integer
   n_modes::Integer
+  padding::Integer
+  external_coils::Integer
 
   rmin::T
   zmin::T
@@ -34,7 +36,9 @@ end
 function BField(nr::Integer,
                 nz::Integer,
                 nphi::Integer;
-                n_modes::Integer = div(nϕ,2),
+                n_modes::Integer = div(nphi,2),
+                padding::Integer = 5,
+                external_coils::Integer = 1,
                 T::Type=Float64,
                )
 
@@ -47,7 +51,7 @@ function BField(nr::Integer,
 
   r = zeros(T,nr)
   z = zeros(T,nz)
-  phi = zeros(T,nz)
+  phi = zeros(T,nphi)
 
   r_range = 0.0:1.0:1.0
   z_range = 0.0:1.0:1.0
@@ -58,8 +62,9 @@ function BField(nr::Integer,
   bz_grid = zeros(T,nr,nz,nphi)
   bp_grid = zeros(T,nr,nz,nphi)
 
-  BField{T}(nr,nz,nphi,n_modes,nfp,rmin,zmin,rmax,zmax,
-            r,z,phi,r_range, z_range, ϕ_range,
+  BField{T}(nr, nz, nphi, nfp, n_modes, padding, external_coils,
+            rmin, zmin, rmax, zmax,
+            r, z, phi, r_range, z_range, ϕ_range,
             br_grid, bz_grid, bp_grid)
 
 end
