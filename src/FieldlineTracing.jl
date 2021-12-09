@@ -4,7 +4,7 @@ using StaticArrays
 using NetCDF
 using Interpolations
 using Polyester
-using OrdinaryDiffEq
+using DifferentialEquations
 
 include("bfieldUtils.jl")
 include("bfieldTypes.jl")

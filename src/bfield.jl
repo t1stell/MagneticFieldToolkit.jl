@@ -222,6 +222,5 @@ function (itp::BFieldInterpolator)(r::T,
   Bz = itp.Bz(r,z,ϕ)
   Bϕ = itp.Bϕ(r,z,ϕ)
 
-  return !xyz ? (Br, Bz, Bϕ) :
-    (Br * cos(ϕ) - Bϕ * sin(ϕ), Br * sin(ϕ) + Bϕ * cos(ϕ), Bz)
+  return !xyz ? (Br, Bz, Bϕ) : (Br * cos(ϕ) - Bϕ * sin(ϕ), Br * sin(ϕ) + Bϕ * cos(ϕ), Bz)
 end
