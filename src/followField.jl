@@ -16,7 +16,7 @@ function followField(itp::BFieldInterpolator{T},
   params = InterpolationParameters(itp, zeros(T,3), 2π/itp.nfp)
   prob = ODEProblem(fieldDerivPhi, u, phiSpan, params)
   if poincare
-    N = abs(phiEnd - phiStart)/(2*π/itp.nfp)
+    N = abs(phiEnd - phiStart)/(2π/itp.nfp)
     saveat = [i * 2*π/itp.nfp + phiStart for i in 1:N]
   else
     saveat = []
@@ -57,11 +57,28 @@ function fieldDerivPhi(u::AbstractVector{T},
   SVector{2,T}(bp * p.values[1], bp * p.values[2])
 end
 
-function poincare(itp::BFieldInterpolator,
-                  bfield::BField,
-                  phi_end::T;
-                  phi_step::T=zero(T),
+function poincare(itp::BFieldInterpolator{T},
+                  initial_conditions::AbstractArray;
+                  trace_ntransits::Integer = 1,
+                  trace_nfp::Integer = 0,
+                  ϕ_step::T=zero(T),
                  ) where {T}
-  phi_span = (zero(T), phi_end)
-  
+  ϕ_nfp = 2π/itp.nfp
+  N = iszero(trace_nfp) ? 2π * trace_ntransits : ϕ_nfp * trace_nfp
+  ϕ_start = last(first(initial_conditions))
+  ϕ_end = N * ϕ_nfp + ϕ_start 
+  ϕ_span = (ϕ_start, ϕ_end)
+  params = InterpolationParameters(itp, zeros(T,3), ϕ_nfp)
+  u0 = SVector{2,T}(first(initial_conditions)[1:2])
+  ϕ_saveat = [i * ϕ_nfp + ϕ_start for i in 1:N]
+  prob = iszero(ϕ_step) ? ODEProblem(fieldDerivPhi, u0, ϕ_span, params, saveat = ϕ_saveat) :
+                          ODEProblem(fieldDerivPhi, u0, ϕ_span, params, saveat = ϕ_saveat, dtmax = ϕ_step)
+
+  function prob_func(prob, i, repeat)
+    @info "Remaking at iteration $i with initial condition $(initial_conditions[i][1:2])"
+    remake(prob, u0 = SVector{2,T}(initial_conditions[i][1:2]))
+  end
+
+  poincare_prob = EnsembleProblem(prob, prob_func = prob_func)
+  traj = solve(poincare_prob, Tsit5(), EnsembleThreads(), trajectories = length(initial_conditions))
 end
