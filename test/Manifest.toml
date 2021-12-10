@@ -462,7 +462,7 @@ version = "0.5.1+0"
 [[deps.FieldlineTracing]]
 deps = ["ApproxFun", "DifferentialEquations", "Interpolations", "IntervalSets", "NetCDF", "Polyester", "StaticArrays"]
 git-tree-sha1 = "c0060b8cdc9600a6fffda2c7c05771a611735110"
-repo-rev = "main"
+repo-rev = "master"
 repo-url = ".."
 uuid = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
 version = "0.1.0"

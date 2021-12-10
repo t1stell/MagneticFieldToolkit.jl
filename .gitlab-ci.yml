@@ -3,7 +3,8 @@
     - |
       julia --project=@. -e '
         using Pkg
-        Pkg.build()
+        Pkg.activate(pwd())
+        Pkg.instantiate()
         Pkg.test(coverage=true)'
 .coverage:
   coverage: /Test coverage (\d+\.\d+%)/

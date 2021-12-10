@@ -12,11 +12,17 @@ function followField(itp::BFieldInterpolator{T},
                     ) where {T}
   phiStart = rzp[3]
   u = @SVector [rzp[1], rzp[2]]
-  phiSpan = (0.0,phiEnd)
+  phiSpan = (phiStart,phiEnd)
   params = InterpolationParameters(itp, zeros(T,3), 2π/itp.nfp)
   prob = ODEProblem(fieldDerivPhi, u, phiSpan, params)
-  sol = abs(phiStep) > zero(T) ? solve(prob, Tsit5(), dtmax = phiStep, saveat = poincare ? 2π : []) :
-                                 solve(prob, Tsit5(), saveat = poincare ? 2π : [])
+  if poincare
+    N = abs(phiEnd - phiStart)/(2*π/itp.nfp)
+    saveat = [i * 2*π/itp.nfp + phiStart for i in 1:N]
+  else
+    saveat = []
+  end
+  sol = abs(phiStep) > zero(T) ? solve(prob, Tsit5(), dtmax = phiStep, saveat = saveat) :
+                                 solve(prob, Tsit5(), saveat = saveat)
 
 end
 
