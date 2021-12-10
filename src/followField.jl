@@ -26,6 +26,18 @@ function followField(itp::BFieldInterpolator{T},
 
 end
 
+function followFieldS(itp::BFieldInterpolator{T},
+                      rzp::Array{Float64},
+                      sEnd::Float64;
+                      sStep::Float64=zero(T),
+                      ) where{T}
+  u = @SVector [rzp[1], rzp[2], rzp[3]]
+  sSpan = (0, sEnd)
+  params = InterpolationParameters(itp, zeros(T,3), 2π/itp.nfp)
+  prob = ODEProblem(fieldDerivS, u, sSpan, params)
+  sol = abs(sStep) > zero(T) ? solve(prob, Tsit5(), dtmax = sStep, saveat = sStep) :
+                               solve(prob, Tsit5(), saveat = sStep)
+end
 
 function fieldDerivPhi!(du::Vector{Float64}, u::Vector{Float64},
                         itp::BFieldInterpolator, ϕ::Float64)
@@ -47,6 +59,7 @@ function fieldDerivPhi(u::AbstractVector,
   SVector{2,T}(dr, dz)
 end
 
+
 function fieldDerivPhi(u::AbstractVector{T},
                        p::InterpolationParameters{T},
                        ϕ::T;
@@ -55,6 +68,21 @@ function fieldDerivPhi(u::AbstractVector{T},
   map!(i->getfield(p.itp, i)(u[1], u[2], ϕ), p.values, 1:3)
   bp = u[1] / p.values[3]
   SVector{2,T}(bp * p.values[1], bp * p.values[2])
+end
+
+
+#integration with respect to arclength
+function fieldDerivS(u::AbstractVector,
+                     p::InterpolationParameters{T},
+                     s::Float64;) where {T}
+  ϕ = mod(u[3], p.ϕ_max)
+  map!(i->getfield(p.itp, i)(u[1], u[2], ϕ), p.values, 1:3)
+  bmagsq = sum(p.values.^2)
+  dr = p.values[1]/bmagsq
+  dz = p.values[2]/bmagsq
+  dϕ = (p.values[3]/u[1])/bmagsq
+  SVector{3, T}(dr, dz, dϕ)
+
 end
 
 function poincare(itp::BFieldInterpolator{T},
