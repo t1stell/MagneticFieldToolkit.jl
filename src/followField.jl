@@ -127,7 +127,7 @@ function poincare(bfield::BField,
     full_size = (length(r₀),length(z₀))
     r_grid = reshape(repeat(r₀, inner= length(z₀)), full_size)
     z_grid = reshape(repeat(z₀, outer= length(r₀)), full_size)
-    init_cond = Matrix{T}(undef, full_size)
+    init_cond = Matrix{Vector{T}}(undef, full_size)
     for i in eachindex(r_grid, z_grid, init_cond)
         init_cond[i] = [r_grid[i], z_grid[i], ϕ₀]
     end
