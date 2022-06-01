@@ -118,15 +118,15 @@ end
 function poincare(bfield::BField,
                   r₀::Union{T, AbstractVector{T}},
                   z₀::Union{T, AbstractVector{T}},
-                  ϕₒ::T;
+                  ϕ₀::T;
                   trace_ntransits::Integer = 1,
                   trace_nfp::Integer = 0,
                   ϕ_step::T=zero(T),
                  ) where {T}
     itp = BFieldInterpolator(bfield)
     full_size = (length(r₀),length(z₀))
-    r_grid = reshape(repeat(rₒ, inner= length(zₒ)), full_size)
-    z_grid = reshape(repeat(zₒ, outer= length(rₒ)), full_size)
+    r_grid = reshape(repeat(r₀, inner= length(z₀)), full_size)
+    z_grid = reshape(repeat(z₀, outer= length(r₀)), full_size)
     init_cond = Matrix{T}(undef, full_size)
     for i in eachindex(r_grid, z_grid, init_cond)
         init_cond[i] = [r_grid[i], z_grid[i], ϕ₀]

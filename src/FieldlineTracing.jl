@@ -1,5 +1,5 @@
 module FieldlineTracing
-
+using Requires
 using StaticArrays
 using NetCDF
 using Interpolations
