@@ -101,7 +101,9 @@ function BFieldInterpolator(bfield::BField{T};
     Bz = CubicSplineInterpolation((r_knots, z_knots, ϕ_knots), bfield.bz_grid)
     Bϕ = CubicSplineInterpolation((r_knots, z_knots, ϕ_knots), bfield.bp_grid)
 
-    BFieldInterpolator{T}(Br, Bz, Bϕ, bfield.nfp)
+    BFieldInterpolator{T}(Br, Bz, Bϕ, bfield.nfp,
+                          extrema(r_knots)...,
+                          extrema(z_knots)...)
 end
 
 function readMgrid(filename::AbstractString,

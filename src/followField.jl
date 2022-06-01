@@ -69,9 +69,13 @@ function field_deriv_phi(u::AbstractVector{T},
                          ϕ::T;
                         ) where {T}
     ϕ = mod(ϕ, p.ϕ_max)
-    map!(i->getfield(p.itp, i)(u[1], u[2], ϕ), p.values, 1:3)
-    bp = u[1] / p.values[3]
-    SVector{2,T}(bp * p.values[1], bp * p.values[2])
+    if p.itp.r_min < u[1] < p.itp.r_max && p.itp.z_min < u[2] < p.itp.z_max
+        map!(i->getfield(p.itp, i)(u[1], u[2], ϕ), p.values, 1:3)
+        bp = u[1] / p.values[3]
+        return SVector{2,T}(bp * p.values[1], bp * p.values[2])
+    else
+        return u
+    end
 end
 
 
@@ -94,6 +98,7 @@ function poincare(itp::BFieldInterpolator{T},
                   trace_ntransits::Integer = 1,
                   trace_nfp::Integer = 0,
                   ϕ_step::T=zero(T),
+                  maxiters::Int = 10^5,
                  ) where {T}
   ϕ_nfp = 2π/itp.nfp
   N = iszero(trace_nfp) ? 2π * trace_ntransits : ϕ_nfp * trace_nfp
@@ -103,16 +108,20 @@ function poincare(itp::BFieldInterpolator{T},
   params = InterpolationParameters(itp, zeros(T,3), ϕ_nfp)
   u0 = SVector{2,T}(first(initial_conditions)[1:2])
   ϕ_saveat = [i * ϕ_nfp + ϕ_start for i in 1:N]
-  prob = iszero(ϕ_step) ? ODEProblem(field_deriv_phi, u0, ϕ_span, params, saveat = ϕ_saveat) :
-                          ODEProblem(field_deriv_phi, u0, ϕ_span, params, saveat = ϕ_saveat, dtmax = ϕ_step)
+  prob = iszero(ϕ_step) ? ODEProblem(field_deriv_phi, u0, ϕ_span, params, saveat = ϕ_saveat, maxiters = maxiters) :
+                          ODEProblem(field_deriv_phi, u0, ϕ_span, params, saveat = ϕ_saveat, maxiters = maxiters, dtmax = ϕ_step)
 
   function prob_func(prob, i, repeat)
-    @info "Remaking at iteration $i with initial condition $(initial_conditions[i][1:2])"
+    @debug "Remaking trajectory $i with initial condition $(initial_conditions[i][1:2])"
     remake(prob, u0 = SVector{2,T}(initial_conditions[i][1:2]))
   end
 
   poincare_prob = EnsembleProblem(prob, prob_func = prob_func)
-  solve(poincare_prob, Tsit5(), EnsembleThreads(), trajectories = length(initial_conditions))
+  solve(poincare_prob,
+        Rodas5(),
+        EnsembleThreads(),
+        trajectories = length(initial_conditions), 
+       )
 end
 
 function poincare(bfield::BField,
@@ -122,6 +131,7 @@ function poincare(bfield::BField,
                   trace_ntransits::Integer = 1,
                   trace_nfp::Integer = 0,
                   ϕ_step::T=zero(T),
+                  maxiters::Int = 10^5,
                  ) where {T}
     itp = BFieldInterpolator(bfield)
     full_size = (length(r₀),length(z₀))
@@ -131,5 +141,9 @@ function poincare(bfield::BField,
     for i in eachindex(r_grid, z_grid, init_cond)
         init_cond[i] = [r_grid[i], z_grid[i], ϕ₀]
     end
-    poincare(itp, init_cond; trace_ntransits = trace_ntransits, trace_nfp = trace_nfp, ϕ_step = ϕ_step)
+    poincare(itp, init_cond;
+             trace_ntransits = trace_ntransits,
+             trace_nfp = trace_nfp,
+             ϕ_step = ϕ_step,
+             maxiters = maxiters)
 end

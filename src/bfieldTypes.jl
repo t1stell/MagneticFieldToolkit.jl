@@ -4,6 +4,10 @@ struct BFieldInterpolator{T<:AbstractFloat}
     Bz::Interpolations.Extrapolation
     Bϕ::Interpolations.Extrapolation
     nfp::Integer
+    r_min::T
+    r_max::T
+    z_min::T
+    z_max::T
 end
 
 
