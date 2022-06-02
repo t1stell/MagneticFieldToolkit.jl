@@ -118,7 +118,7 @@ function poincare(itp::BFieldInterpolator{T},
 
   poincare_prob = EnsembleProblem(prob, prob_func = prob_func)
   solve(poincare_prob,
-        Rodas5(),
+        Tsit5(),
         EnsembleThreads(),
         trajectories = length(initial_conditions), 
        )
@@ -141,6 +141,7 @@ function poincare(bfield::BField,
     for i in eachindex(r_grid, z_grid, init_cond)
         init_cond[i] = [r_grid[i], z_grid[i], ϕ₀]
     end
+
     poincare(itp, init_cond;
              trace_ntransits = trace_ntransits,
              trace_nfp = trace_nfp,
