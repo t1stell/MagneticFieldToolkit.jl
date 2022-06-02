@@ -74,7 +74,8 @@ function read_bmw(filename::AbstractString;
     phi_max = (2π)/bmw.nfp
     bmw.r = LinRange(bmw.rmin, bmw.rmax, bmw.nr)
     bmw.z = LinRange(bmw.zmin, bmw.zmax, bmw.nz)
-    bmw.phi = LinRange(0, phi_max, bmw.nphi)
+    nphi = bmw.nphi;
+    bmw.phi = LinRange(0, phi_max*(nphi-1)/nphi, nphi)
 
     bmw.r_range = vector2range(bmw.r)
     bmw.z_range = vector2range(bmw.z)
@@ -92,14 +93,20 @@ magnetic field components are obtained by `itp(x1,x2,x3)` for
 the coordinates `(x1,x2,x3)`.
 """
 function BFieldInterpolator(bfield::BField{T};
-                           ) where {T}
+	                   ) where {T}
     ϕ_knots = bfield.ϕ_range
     r_knots = bfield.r_range
     z_knots = bfield.z_range
 
-    Br = CubicSplineInterpolation((r_knots, z_knots, ϕ_knots), bfield.br_grid)
-    Bz = CubicSplineInterpolation((r_knots, z_knots, ϕ_knots), bfield.bz_grid)
-    Bϕ = CubicSplineInterpolation((r_knots, z_knots, ϕ_knots), bfield.bp_grid)
+    interp_modes = (BSpline(Cubic(Free(OnGrid()))),
+                    BSpline(Cubic(Free(OnGrid()))),
+                    BSpline(Cubic(Periodic(OnCell()))) )
+    my_interp = (field) -> scale(interpolate(field, interp_modes), r_knots, z_knots, ϕ_knots)
+    my_extrap = (field) -> extrapolate(my_interp(field), (Throw(), Throw(), Periodic()));
+
+    Br = my_extrap(bfield.br_grid)
+    Bz = my_extrap(bfield.bz_grid)
+    Bϕ = my_extrap(bfield.bp_grid)
 
     BFieldInterpolator{T}(Br, Bz, Bϕ, bfield.nfp,
                           extrema(r_knots)...,
