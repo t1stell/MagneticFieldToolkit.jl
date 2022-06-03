@@ -3,8 +3,7 @@
     - |
       julia --project=@. -e '
         using Pkg
-        Pkg.activate(pwd())
-        Pkg.instantiate()
+        Pkg.build()
         Pkg.test(coverage=true)'
 .coverage:
   coverage: /Test coverage (\d+\.\d+%)/
@@ -17,29 +16,24 @@
         c, t = get_summary(process_folder())
         using Printf
         @printf "Test coverage %.2f%%\n" 100c / t'
-Julia 1.6:
-  image: julia:1.6
-  extends:
-    - .script
-    - .coverage
 Julia 1.7:
   image: julia:1.7
   extends:
     - .script
     - .coverage
 pages:
-  image: julia:1.6
+  image: julia:1.7
   stage: deploy
   script:
     - apt-get -qq update; apt-get -y install git;
     - |
       julia --project=docs -e '
         using Pkg
-        Pkg.activate(pwd())
+        Pkg.develop(PackageSpec(path=pwd()))
         Pkg.instantiate()
         using Documenter: doctest
-        using FieldlineTracing
-        doctest(FieldlineTracing)
+        using MagneticFieldToolkit
+        doctest(MagneticFieldToolkit)
         include("docs/make.jl")'
     - mkdir -p public
     - mv docs/build public/dev

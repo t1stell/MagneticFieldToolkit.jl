@@ -1,4 +1,4 @@
-module FieldlineTracing
+module MagneticFieldToolkit
 using Requires
 using StaticArrays
 using NetCDF

@@ -1,16 +1,18 @@
-using FieldlineTracing
+using MagneticFieldToolkit
 using Documenter
 
-DocMeta.setdocmeta!(FieldlineTracing, :DocTestSetup, :(using FieldlineTracing); recursive=true)
+DocMeta.setdocmeta!(MagneticFieldToolkit, :DocTestSetup, :(using MagneticFieldToolkit); recursive=true)
 
 makedocs(;
-    modules=[FieldlineTracing],
-    authors="Benjamin Faber <bfaber@wisc.edu> and Aaron Bader <abader@engr.wisc.edu>",
-    repo="https://gitlab.com/wistell/FieldlineTracing.jl/blob/{commit}{path}#{line}",
-    sitename="FieldlineTracing.jl",
+    modules=[MagneticFieldToolkit],
+    authors=["Benjamin Faber <bfaber@wisc.edu>", 
+             "Aaron Bader <abader@engr.wisc.edu>",
+             "Max Ruth <mer335@cornell.edu>"],
+    repo="https://gitlab.com/wistell/MagneticFieldToolkit.jl/blob/{commit}{path}#{line}",
+    sitename="MagneticFieldToolkit.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://wistell.gitlab.io/FieldlineTracing.jl",
+        canonical="https://wistell.gitlab.io/MagneticFieldToolkit.jl",
         assets=String[],
     ),
     pages=[

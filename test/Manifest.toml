@@ -459,7 +459,7 @@ git-tree-sha1 = "176f3f679f8921b3dc2ba127da2f9caf3f6a26eb"
 uuid = "34b6f7d7-08f9-5794-9e10-3819e4c7e49a"
 version = "0.5.1+0"
 
-[[deps.FieldlineTracing]]
+[[deps.MagneticFieldToolkit]]
 deps = ["ApproxFun", "DifferentialEquations", "Interpolations", "IntervalSets", "NetCDF", "Polyester", "StaticArrays"]
 git-tree-sha1 = "c0060b8cdc9600a6fffda2c7c05771a611735110"
 repo-rev = "master"

@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = FieldlineTracing
+CurrentModule = MagneticFieldToolkit
 ```
 
-# FieldlineTracing
+# MagneticFieldToolkit
 
-Documentation for [FieldlineTracing](https://gitlab.com/bfaber/FieldlineTracing.jl).
+Documentation for [MagneticFieldToolkit](https://gitlab.com/wistell/MagneticFieldToolkit.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [FieldlineTracing]
+Modules = [MagneticFieldToolkit]
 ```

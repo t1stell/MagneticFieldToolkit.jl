@@ -6,20 +6,20 @@ using InteractiveUtils
 
 # ╔═╡ 6da0a8fe-e217-11ec-1140-1fb7377ac637
 begin
-	using CairoMakie, FieldlineTracing
+	using CairoMakie, MagneticFieldToolkit
 	CairoMakie.activate!(type = "png")
-	FLT = FieldlineTracing
+	MFT = MagneticFieldToolkit
 end
 
 # ╔═╡ f96661e3-8b20-4eb0-abd2-b8244ae14c6e
 md"""
-# Using FieldlineTracing.jl for Poincare plots
+# Using MagneticFieldToolkit.jl for Poincare plots
 
-This is a quick tutorial on how to use the `FieldlineTracing` package to produce Poincare plots from magnetic field data in the BMW format.  The package can be accessed througth the `WistellRegistry` local package registy.  To add the registry, in the REPL (outside of the Pluto notebook), enter the package manager and execute the following command:
+This is a quick tutorial on how to use the `MagneticFieldToolkit` package to produce Poincare plots from magnetic field data in the BMW format.  The package can be accessed througth the `WistellRegistry` local package registy.  To add the registry, in the REPL (outside of the Pluto notebook), enter the package manager and execute the following command:
 ```julia-repl
 (@v1.7) pkg> registry add https://gitlab.com/wistell/WistellRegistry
 ```
-After the registry is added, re-open this notebook.  The commands below will install `CairoMakie` (used for plotting) and `FieldlineTracing`.
+After the registry is added, re-open this notebook.  The commands below will install `CairoMakie` (used for plotting) and `MagneticFieldToolkit`.
 """
 
 # ╔═╡ 2b086fc2-0ce8-40a3-b744-7f7318b1f7c0
@@ -28,7 +28,7 @@ We will load a BMW file with the `read_bmw` command.  Change the path to the BMW
 """
 
 # ╔═╡ d2d513df-b62f-47c3-ab3e-1669228bb512
-bfield = FLT.read_bmw("/home/jschmitt/DATABASE/flare/wistd_306_aphi4/bmw_wistd_306_aphi4.nc");
+bfield = MFT.read_bmw("/home/jschmitt/DATABASE/flare/wistd_306_aphi4/bmw_wistd_306_aphi4.nc");
 
 # ╔═╡ c17a8186-883d-4960-89e0-dced31d1c165
 md"""
@@ -56,7 +56,7 @@ function poincare(bfield::BField,
 """
 
 # ╔═╡ 5b5dddb5-9a5d-4ed7-a7f7-aafe592ea92e
-traj = FLT.poincare(bfield, r_range, z_range, π/4; trace_ntransits = 250, ϕ_step = step(bfield.ϕ_range), maxiters = 10^7);
+traj = MFT.poincare(bfield, r_range, z_range, π/4; trace_ntransits = 250, ϕ_step = step(bfield.ϕ_range), maxiters = 10^7);
 
 # ╔═╡ a45143da-54bc-4ac0-af85-abe623842697
 md"""
@@ -71,17 +71,17 @@ function plot_poincare(bfield::BField,
 """
 
 # ╔═╡ 12544041-a6fe-46e2-8b70-6214785aa91f
-fig = FLT.plot_poincare(bfield, traj; markersize = 1.5)
+fig = MFT.plot_poincare(bfield, traj; markersize = 1.5)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-FieldlineTracing = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
+MagneticFieldToolkit = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
 
 [compat]
 CairoMakie = "~0.8.3"
-FieldlineTracing = "~0.1.1"
+MagneticFieldToolkit = "~0.1.1"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -498,7 +498,7 @@ git-tree-sha1 = "acebe244d53ee1b461970f8910c235b259e772ef"
 uuid = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
 version = "0.3.2"
 
-[[deps.FieldlineTracing]]
+[[deps.MagneticFieldToolkit]]
 deps = ["DifferentialEquations", "Interpolations", "NetCDF", "Polyester", "Requires", "StaticArrays"]
 git-tree-sha1 = "8ba5f2511f4697d356931f806f6b67f56a3cd14e"
 uuid = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"

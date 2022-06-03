@@ -1,7 +1,9 @@
-name = "FieldlineTracing"
+name = "MagneticFieldToolkit"
 uuid = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
-authors = ["Benjamin Faber <bfaber@wisc.edu> and Aaron Bader <abader@engr.wisc.edu>"]
-version = "0.1.1"
+authors = ["Benjamin Faber <bfaber@wisc.edu>",
+           "Aaron Bader <abader@engr.wisc.edu>",
+           "Max Ruth <mer335@cornell.edu>"]
+version = "0.1.2"
 
 [deps]
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"

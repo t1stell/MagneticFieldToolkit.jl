@@ -1,6 +1,6 @@
-using FieldlineTracing
+using MagneticFieldToolkit
 using Test
 
-@testset "FieldlineTracing.jl" begin
+@testset "MagneticFieldToolkit.jl" begin
     # Write your tests here.
 end
