@@ -9,6 +9,11 @@ using DifferentialEquations
 using CoordinateTransformations
 using PlasmaEquilibriumToolkit
 
+
+# File load 
+export read_mgrid, read_bmw
+
+
 include("bfieldUtils.jl")
 include("ReadMagneticField.jl")
 include("followField.jl")

@@ -1,6 +1,4 @@
 using MagneticFieldToolkit
 using Test
 
-@testset "MagneticFieldToolkit.jl" begin
-    # Write your tests here.
-end
+include("file_load_tests.jl")
