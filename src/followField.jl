@@ -1,10 +1,10 @@
 struct InterpolationParameters{T}
-    itp::BFieldInterpolator{T}
+    itp::MagneticField{T}
     values::Vector{T}
     ϕ_max::T
 end
 
-function follow_field(itp::BFieldInterpolator{T},
+function follow_field(itp::MagneticField{T},
                       rzp::Array{Float64},
                       phi_end::Float64;
                       phi_step::Float64=zero(T),
@@ -26,7 +26,7 @@ function follow_field(itp::BFieldInterpolator{T},
 
 end
 
-function follow_field_s(itp::BFieldInterpolator{T},
+function follow_field_s(itp::MagneticField{T},
                       rzp::Array{Float64},
                       s_end::Float64;
                       s_step::Float64=zero(T),
@@ -41,7 +41,7 @@ end
 
 function field_deriv_phi!(du::Vector{Float64},
                           u::Vector{Float64},
-                          itp::BFieldInterpolator,
+                          itp::MagneticField,
                           ϕ::Float64;
                          )
     r = u[1]
@@ -52,7 +52,7 @@ function field_deriv_phi!(du::Vector{Float64},
 end
 
 function field_deriv_phi(u::AbstractVector,
-                         itp::BFieldInterpolator{T},
+                         itp::MagneticField{T},
                          ϕ::Float64;
                         ) where {T}
   ϕ = mod(ϕ, 2π/itp.nfp)
@@ -93,7 +93,7 @@ function field_deriv_s(u::AbstractVector,
 
 end
 
-function poincare(itp::BFieldInterpolator{T},
+function poincare(itp::MagneticField{T},
                   initial_conditions::AbstractArray;
                   trace_ntransits::Integer = 1,
                   trace_nfp::Integer = 0,
@@ -124,7 +124,7 @@ function poincare(itp::BFieldInterpolator{T},
        )
 end
 
-function poincare(bfield::BField,
+function poincare(itp::MagneticField{T},
                   r₀::Union{T, AbstractVector{T}},
                   z₀::Union{T, AbstractVector{T}},
                   ϕ₀::T;
@@ -133,7 +133,6 @@ function poincare(bfield::BField,
                   ϕ_step::T=zero(T),
                   maxiters::Int = 10^5,
                  ) where {T}
-    itp = BFieldInterpolator(bfield)
     full_size = (length(r₀),length(z₀))
     r_grid = reshape(repeat(r₀, inner= length(z₀)), full_size)
     z_grid = reshape(repeat(z₀, outer= length(r₀)), full_size)
