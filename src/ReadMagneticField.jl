@@ -68,7 +68,7 @@ function read_bmw(filename::AbstractString;
     Az = NetCDF.readvar(bmw_vars["az_grid"])
     Aθ = NetCDF.readvar(bmw_vars["ap_grid"])
     
-    return MagneticField(field_coords, Br, Bz, Bθ, nfp=nfp)
+    return MagneticField(field_coords, Br, Bz, Bθ, Ar, Az, Aθ, nfp=nfp)
 
 end
 
