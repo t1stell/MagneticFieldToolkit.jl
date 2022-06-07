@@ -1,11 +1,10 @@
 name = "MagneticFieldToolkit"
 uuid = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
-authors = ["Benjamin Faber <bfaber@wisc.edu>",
-           "Aaron Bader <abader@engr.wisc.edu>",
-           "Max Ruth <mer335@cornell.edu>"]
+authors = ["Benjamin Faber <bfaber@wisc.edu>", "Aaron Bader <abader@engr.wisc.edu>", "Max Ruth <mer335@cornell.edu>"]
 version = "0.1.2"
 
 [deps]
+CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 NetCDF = "30363a11-5582-574a-97bb-aa9a979735b9"
