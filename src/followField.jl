@@ -4,10 +4,10 @@ struct InterpolationParameters{T}
     ϕ_max::T
 end
 
-function follow_field(itp::MagneticField{T},
-                      rzp::Array{Float64},
-                      phi_end::Float64;
-                      phi_step::Float64=zero(T),
+function follow_field(itp::MagneticField,
+                      rzp::AbstractArray{T},
+                      phi_end::T;
+                      phi_step::T=zero(T),
                       poincare::Bool=false
                      ) where {T}
     phiStart = rzp[3]
@@ -26,10 +26,10 @@ function follow_field(itp::MagneticField{T},
 
 end
 
-function follow_field_s(itp::MagneticField{T},
-                      rzp::Array{Float64},
-                      s_end::Float64;
-                      s_step::Float64=zero(T),
+function follow_field_s(itp::MagneticField,
+                      rzp::AbstractArray{T},
+                      s_end::T;
+                      s_step::T=zero(T),
                       ) where{T}
     u = @SVector [rzp[1], rzp[2], rzp[3]]
     sSpan = (0, s_end)
@@ -39,11 +39,11 @@ function follow_field_s(itp::MagneticField{T},
                             solve(prob, Tsit5(), saveat = s_step)
 end
 
-function field_deriv_phi!(du::Vector{Float64},
-                          u::Vector{Float64},
+function field_deriv_phi!(du::AbstractVector{T},
+                          u::AbstractVector{T},
                           itp::MagneticField,
-                          ϕ::Float64;
-                         )
+                          ϕ::T;
+                         ) where {T}
     r = u[1]
     z = u[2]
     br, bz, bp = itp(r, z, ϕ)
@@ -51,9 +51,9 @@ function field_deriv_phi!(du::Vector{Float64},
     du[2] = r * bz/bp
 end
 
-function field_deriv_phi(u::AbstractVector,
-                         itp::MagneticField{T},
-                         ϕ::Float64;
+function field_deriv_phi(u::AbstractVector{T},
+                         itp::MagneticField,
+                         ϕ::T;
                         ) where {T}
   ϕ = mod(ϕ, 2π/itp.nfp)
   br, bz, bp = itp(u[1], u[2], ϕ)
@@ -80,9 +80,9 @@ end
 
 
 #integration with respect to arclength
-function field_deriv_s(u::AbstractVector,
+function field_deriv_s(u::AbstractVector{T},
                        p::InterpolationParameters{T},
-                       s::Float64;) where {T}
+                       s::T;) where {T}
     ϕ = mod(u[3], p.ϕ_max)
     map!(i->getfield(p.itp, i)(u[1], u[2], ϕ), p.values, 1:3)
     bmagsq = sum(p.values.^2)
@@ -93,7 +93,7 @@ function field_deriv_s(u::AbstractVector,
 
 end
 
-function poincare(itp::MagneticField{T},
+function poincare(itp::MagneticField,
                   initial_conditions::AbstractArray;
                   trace_ntransits::Integer = 1,
                   trace_nfp::Integer = 0,
@@ -124,7 +124,7 @@ function poincare(itp::MagneticField{T},
        )
 end
 
-function poincare(itp::MagneticField{T},
+function poincare(itp::MagneticField,
                   r₀::Union{T, AbstractVector{T}},
                   z₀::Union{T, AbstractVector{T}},
                   ϕ₀::T;
