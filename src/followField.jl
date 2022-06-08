@@ -18,7 +18,7 @@ function InterpolationParameters(itp::MagneticField{T}) where{T}
   r_min = minimum(itp.coords.r)
   z_max = maximum(itp.coords.z)
   z_min = minimum(itp.coords.z)
-  return InterpolationParameters(itp, values, ϕ_max, r_min, r_max, z_min, z_max)
+  return InterpolationParameters{T}(itp, values, ϕ_max, r_min, r_max, z_min, z_max)
 end
   
 
@@ -86,11 +86,9 @@ function field_deriv_ϕ(u::AbstractVector{T},
                          p::InterpolationParameters{T},
                          ϕ::T;
                         ) where {T}
-    ϕ = mod(ϕ, p.ϕ_max)
+    #ϕ = mod(ϕ, p.ϕ_max)
     if p.r_min < u[1] < p.r_max && p.z_min < u[2] < p.z_max
-#        println("coords: ",ϕ," ",u)
         p.values .= p.itp(u[1], ϕ, u[2])
-#        println("field:  ",p.values)
         bϕ = u[1] / p.values[2]
         return SVector{2,T}(bϕ * p.values[1], bϕ * p.values[3])
     else
@@ -122,7 +120,7 @@ function poincare(itp::MagneticField,
                  ) where {T}
   ϕ_nfp = 2π/itp.nfp
   N = iszero(trace_nfp) ? 2π * trace_ntransits : ϕ_nfp * trace_nfp
-  ϕ_start = last(first(initial_conditions))
+  ϕ_start = first(initial_conditions)[2]
   ϕ_end = N * ϕ_nfp + ϕ_start 
   ϕ_span = (ϕ_start, ϕ_end)
   params = InterpolationParameters(itp)
@@ -132,8 +130,8 @@ function poincare(itp::MagneticField,
                           ODEProblem(field_deriv_ϕ, u0, ϕ_span, params, saveat = ϕ_saveat, maxiters = maxiters, dtmax = ϕ_step)
 
   function prob_func(prob, i, repeat)
-    @debug "Remaking trajectory $i with initial condition $(initial_conditions[i][1:2])"
-    remake(prob, u0 = SVector{2,T}(initial_conditions[i][1:2]))
+    @debug "Remaking trajectory $i with initial condition ($(initial_conditions[i][1]), $(initial_conditions[i][3])))"
+    remake(prob, u0 = SVector{2,T}(initial_conditions[i][1], initial_conditions[i][3]))
   end
 
   poincare_prob = EnsembleProblem(prob, prob_func = prob_func)
@@ -144,7 +142,7 @@ function poincare(itp::MagneticField,
        )
 end
 
-function poincare(bfield::BField,
+function poincare(itp::MagneticField,
                   r₀::Union{T, AbstractVector{T}},
                   z₀::Union{T, AbstractVector{T}},
                   ϕ₀::T;

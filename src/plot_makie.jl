@@ -1,7 +1,7 @@
 using .CairoMakie
 CairoMakie.activate!(type = "png")
 
-function plot_poincare(bfield::BField,
+function plot_poincare(bfield::MagneticField,
                        soln_ensemble;
                        resolution = (800, 800),
                        markersize = 2,
