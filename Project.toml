@@ -1,7 +1,7 @@
 name = "MagneticFieldToolkit"
 uuid = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
 authors = ["Benjamin Faber <bfaber@wisc.edu>", "Aaron Bader <abader@engr.wisc.edu>", "Max Ruth <mer335@cornell.edu>"]
-version = "0.1.4"
+version = "0.1.5"
 
 [deps]
 CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
