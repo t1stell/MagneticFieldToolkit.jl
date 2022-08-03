@@ -1,14 +1,21 @@
 module MagneticFieldToolkit
 using Requires
 using StaticArrays
+using StructArrays
 using NetCDF
 using Interpolations
 using Polyester
 using DifferentialEquations
+using CoordinateTransformations
+using PlasmaEquilibriumToolkit
+
+
+# File load 
+export read_mgrid, read_bmw
+
 
 include("bfieldUtils.jl")
-include("bfieldTypes.jl")
-include("bfield.jl")
+include("ReadMagneticField.jl")
 include("followField.jl")
 include("QuadraticFluxMinimize.jl")
 
