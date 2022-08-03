@@ -2,7 +2,7 @@
   function to calculate the toroidal flux = A ⋅ t
   = dR/dθ * Ar + dZ/dθ * Az
 """
-function toroidal_flux(surf::Union{FourierSurface, VmecSurface},
+function toroidal_flux(surf::AbstractMagneticSurface,
                   field::MagneticField;
                   resolution = 100)
   θ = range(0, 2π, resolution)

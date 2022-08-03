@@ -1,5 +1,5 @@
 struct InterpolationParameters{T}
-    itp::BFieldInterpolator{T}
+    itp::MagneticField{T}
     values::Vector{T}
     ϕ_max::T
     r_min::T
@@ -59,7 +59,7 @@ end
 
 function field_deriv_ϕ!(du::Vector{Float64},
                           u::Vector{Float64},
-                          itp::BFieldInterpolator,
+                          itp::MagneticField,
                           ϕ::Float64;
                          )
     r = u[1]
@@ -151,7 +151,6 @@ function poincare(itp::MagneticField,
                   ϕ_step::T=zero(T),
                   maxiters::Int = 10^5,
                  ) where {T}
-    itp = BFieldInterpolator(bfield)
     full_size = (length(r₀),length(z₀))
     r_grid = reshape(repeat(r₀, inner= length(z₀)), full_size)
     z_grid = reshape(repeat(z₀, outer= length(r₀)), full_size)
