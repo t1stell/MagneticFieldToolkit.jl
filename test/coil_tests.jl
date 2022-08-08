@@ -18,14 +18,14 @@
     end
   end
   @testset "verify basic calcs" begin
-    @test isapprox(MagneticFieldToolkit.zextreme_coils(cset), 
-                   0.9998741276738752, rtol=rtol)
-    @test isapprox(MagneticFieldToolkit.zextreme_coils(cset, zmax=false),
-                   -0.9998741276738752, rtol=rtol)
-    @test isapprox(MagneticFieldToolkit.rextreme_coils(cset), 
+    @test isapprox(MagneticFieldToolkit.extreme_coils(cset, :z), 
+                   1.000545601674143, rtol=rtol)
+    @test isapprox(MagneticFieldToolkit.extreme_coils(cset, :z, vmax=false),
+                   -1.0005456016741427, rtol=rtol)
+    @test isapprox(MagneticFieldToolkit.extreme_coils(cset, :r),
                    11.000000000000002, rtol=rtol)
-    @test isapprox(MagneticFieldToolkit.rextreme_coils(cset, rmax=false), 
-                   9.0005034576168122, rtol=rtol)
+    @test isapprox(MagneticFieldToolkit.extreme_coils(cset, :r, vmax=false), 
+                   8.9998322371871672, rtol=rtol)
   end
 end
 

@@ -1,9 +1,10 @@
 
 
 struct CoilFilament{FT}
-  x::Array{FT, 1}
-  y::Array{FT, 1}
-  z::Array{FT, 1}
+  x::Interpolations.Extrapolation
+  y::Interpolations.Extrapolation
+  z::Interpolations.Extrapolation
+  r::Interpolations.Extrapolation
   current::FT
 end
 
@@ -87,7 +88,14 @@ function read_vmec_coils(filename::String)
           current = parse(Float64, dum[4])
         end
       end
-      coil_family[j] = CoilFilament(xc, yc, zc, current)
+      #make the splines
+      t = range(0, 2π, length(xc))
+      rc = sqrt.(xc.^2 + yc.^2)
+      xs = cubic_spline_interpolation(t, xc)
+      ys = cubic_spline_interpolation(t, yc)
+      zs = cubic_spline_interpolation(t, zc)
+      rs = cubic_spline_interpolation(t, rc)
+      coil_family[j] = CoilFilament(xs, ys, zs, rs, current)
     end
     coil_set[fam_index] = CoilFamily(coil_family, family_names[fam_index])
   end
@@ -95,7 +103,7 @@ function read_vmec_coils(filename::String)
   
 end 
 
-
+"""
 function rextreme_coils(cset::CoilSet{T}; rmax=true) where T
   if rmax
     rextreme = 0.0
@@ -120,31 +128,43 @@ function rextreme_coils(cset::CoilSet{T}; rmax=true) where T
   end
   return sqrt(rextreme)
 end
-
-function zextreme_coils(cset::CoilSet{T}; zmax=true) where T
-  if zmax
-    zextreme = -1.0E30
+"""
+function extreme_coils(cset::CoilSet{T}, coord::Symbol; vmax=true) where T
+  if vmax
+    vextreme = -1.0E30
   else
-    zextreme = 1.0E30 #just pick an impossibly large number
+    vextreme = 1.0E30 #just pick an impossibly large number
   end
   for family in cset.family
     for coil in family.coil
-      z = coil.z
-      if zmax
-        zextreme_temp = maximum(z)
-        if zextreme_temp > zextreme
-          zextreme = zextreme_temp
+      vs = getfield(coil, coord)
+      v = vs.itp.itp.coefs[1:end-1]
+      if vmax
+        vextreme_temp = maximum(v)
+        if vextreme_temp > vextreme
+          vextreme = vextreme_temp
         end
       else
-        zextreme_temp = minimum(z)
-        if zextreme_temp < zextreme
-          zextreme = zextreme_temp
+        vextreme_temp = minimum(v)
+        if vextreme_temp < vextreme
+          vextreme = vextreme_temp
         end
       end
     end
   end
-  return zextreme
+  return vextreme
 end
+
+
+function potential_at_point(cset::CoilSet{T}, xyz::SVector) where {T}
+  #parametrize the coil splines
+end
+
+function potential_at_point(cset::CoilSet{T}, cc::Cylindrical) where {T}
+  xyz = CartesianFromCylindrical(cc)
+  return potential_at_point(cset, xyz)
+end
+
 
 """
   potential_from_coils(cset::Coilset, r_res::Int, z_res::Int)
@@ -158,16 +178,16 @@ function potential_from_coils(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
                   rmin=nothing, rmax=nothing, zmin=nothing, zmax=nothing
                   ) where {T}
   if rmax == nothing                
-    rmax = rextreme_coils(cset, rmax=true)
+    rmax = extreme_coils(cset, :r, vmax=true)
   end
   if rmin == nothing
-    rmin = rextreme_coils(cset, rmax=false)
+    rmin = extreme_coils(cset, :r, vmax=false)
   end
   if zmax == nothing
-    zmax = zextreme_coils(cset, zmax = true)
+    zmax = extreme_coils(cset, :z, vmax = true)
   end
   if zmin == nothing
-    zmin = zextreme_coils(cset, zmin = true)
+    zmin = extreme_coils(cset, :z, vmin = true)
   end
 end  
 
