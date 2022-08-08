@@ -93,4 +93,83 @@ function read_vmec_coils(filename::String)
   end
   return CoilSet(coil_set)
   
+end 
+
+
+function rextreme_coils(cset::CoilSet{T}; rmax=true) where T
+  if rmax
+    rextreme = 0.0
+  else
+    rextreme = 1.0E30 #just pick an impossibly large number
+  end
+  for family in cset.family
+    for coil in family.coil
+      r = coil.x.^2 .+ coil.y.^2
+      if rmax
+        rextreme_temp = maximum(r)
+        if rextreme_temp > rextreme
+          rextreme = rextreme_temp
+        end
+      else
+        rextreme_temp = minimum(r)
+        if rextreme_temp < rextreme
+          rextreme = rextreme_temp
+        end
+      end
+    end
+  end
+  return sqrt(rextreme)
+end
+
+function zextreme_coils(cset::CoilSet{T}; zmax=true) where T
+  if zmax
+    zextreme = -1.0E30
+  else
+    zextreme = 1.0E30 #just pick an impossibly large number
+  end
+  for family in cset.family
+    for coil in family.coil
+      z = coil.z
+      if zmax
+        zextreme_temp = maximum(z)
+        if zextreme_temp > zextreme
+          zextreme = zextreme_temp
+        end
+      else
+        zextreme_temp = minimum(z)
+        if zextreme_temp < zextreme
+          zextreme = zextreme_temp
+        end
+      end
+    end
+  end
+  return zextreme
+end
+
+"""
+  potential_from_coils(cset::Coilset, r_res::Int, z_res::Int)
+
+optional arguments, rmin, rmax, zmin, zmax.  If not set, the values used are
+the maximum r and z from the coils
+
+"""
+function potential_from_coils(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
+                               nfp::Int64;
+                  rmin=nothing, rmax=nothing, zmin=nothing, zmax=nothing
+                  ) where {T}
+  if rmax == nothing                
+    rmax = rextreme_coils(cset, rmax=true)
+  end
+  if rmin == nothing
+    rmin = rextreme_coils(cset, rmax=false)
+  end
+  if zmax == nothing
+    zmax = zextreme_coils(cset, zmax = true)
+  end
+  if zmin == nothing
+    zmin = zextreme_coils(cset, zmin = true)
+  end
 end  
+
+
+
