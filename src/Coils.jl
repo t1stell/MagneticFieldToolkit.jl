@@ -1,10 +1,15 @@
-
+const μ0 = 1.25663706E-6
 
 struct CoilFilament{FT}
   x::Interpolations.Extrapolation
   y::Interpolations.Extrapolation
   z::Interpolations.Extrapolation
   r::Interpolations.Extrapolation
+  dxdt::Interpolations.Extrapolation
+  dydt::Interpolations.Extrapolation
+  dzdt::Interpolations.Extrapolation
+  drdt::Interpolations.Extrapolation
+  ds_mag::Interpolations.Extrapolation
   current::FT
 end
 
@@ -89,13 +94,26 @@ function read_vmec_coils(filename::String)
         end
       end
       #make the splines
-      t = range(0, 2π, length(xc))
+      ts = range(0, 2π, length(xc))
       rc = sqrt.(xc.^2 + yc.^2)
-      xs = cubic_spline_interpolation(t, xc)
-      ys = cubic_spline_interpolation(t, yc)
-      zs = cubic_spline_interpolation(t, zc)
-      rs = cubic_spline_interpolation(t, rc)
-      coil_family[j] = CoilFilament(xs, ys, zs, rs, current)
+      xs = cubic_spline_interpolation(ts, xc)
+      ys = cubic_spline_interpolation(ts, yc)
+      zs = cubic_spline_interpolation(ts, zc)
+      rs = cubic_spline_interpolation(ts, rc)
+
+      #calculate the derivative splines
+      dx = [Interpolations.gradient(xs, t)[1] for t in ts] 
+      dy = [Interpolations.gradient(ys, t)[1] for t in ts]
+      dz = [Interpolations.gradient(zs, t)[1] for t in ts]
+      dr = [Interpolations.gradient(rs, t)[1] for t in ts]
+      ds_mag = sqrt.(dx.^2 .+ dy.^2 .+ dz.^2)
+      dxdt = cubic_spline_interpolation(ts, dx)
+      dydt = cubic_spline_interpolation(ts, dy)
+      dzdt = cubic_spline_interpolation(ts, dz)
+      drdt = cubic_spline_interpolation(ts, dr)
+      ds = cubic_spline_interpolation(ts, ds_mag)
+      coil_family[j] = CoilFilament(xs, ys, zs, rs, dxdt, dydt, 
+                                    dzdt, drdt, ds, current)
     end
     coil_set[fam_index] = CoilFamily(coil_family, family_names[fam_index])
   end
@@ -132,7 +150,34 @@ end
 
 
 function potential_at_point(cset::CoilSet{T}, xyz::SVector) where {T}
-  #parametrize the coil splines
+  A = 
+  for family in cset.family
+    for coil in family.coil
+      xc = coil.x
+      yc = coil.y
+      zc = coil.z
+      #compute ds for each coil, probably should save these
+
+      #function to calculate components of A from a given point on the coil
+      function A_x(t::Float64)
+        #calculate distance from point to coil section
+        ξ = sqrt((xyz[1] - xc(t))^2 + (xyz[2] -yc(t))^2 + (xyz[3] - zc(t)^2))
+        return coil.current/ξ * coil.dx(t)/coil.ds_mag(t)
+      end
+      function A_y(t::Float64)
+        #calculate distance from point to coil section
+        ξ = sqrt((xyz[1] - xc(t))^2 + (xyz[2] -yc(t))^2 + (xyz[3] - zc(t)^2))
+        return coil.current/ξ * coil.dy(t)/coil.ds_mag(t)
+      end
+      function A_z(t::Float64)
+        #calculate distance from point to coil section
+        return coil.current/ξ * coil.dz(t)/coil.ds_mag(t)
+      end
+     end
+     end
+     
+
+
 end
 
 function potential_at_point(cset::CoilSet{T}, cc::Cylindrical) where {T}
