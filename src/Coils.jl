@@ -103,32 +103,7 @@ function read_vmec_coils(filename::String)
   
 end 
 
-"""
-function rextreme_coils(cset::CoilSet{T}; rmax=true) where T
-  if rmax
-    rextreme = 0.0
-  else
-    rextreme = 1.0E30 #just pick an impossibly large number
-  end
-  for family in cset.family
-    for coil in family.coil
-      r = coil.x.^2 .+ coil.y.^2
-      if rmax
-        rextreme_temp = maximum(r)
-        if rextreme_temp > rextreme
-          rextreme = rextreme_temp
-        end
-      else
-        rextreme_temp = minimum(r)
-        if rextreme_temp < rextreme
-          rextreme = rextreme_temp
-        end
-      end
-    end
-  end
-  return sqrt(rextreme)
-end
-"""
+#function to get approximate extremes of coils to bound box fields
 function extreme_coils(cset::CoilSet{T}, coord::Symbol; vmax=true) where T
   if vmax
     vextreme = -1.0E30
