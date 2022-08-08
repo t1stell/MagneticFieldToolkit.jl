@@ -150,7 +150,9 @@ end
 
 
 function potential_at_point(cset::CoilSet{T}, xyz::SVector) where {T}
-  A = 
+  Ax = 0.0
+  Ay = 0.0
+  Az = 0.0
   for family in cset.family
     for coil in family.coil
       xc = coil.x
@@ -159,30 +161,34 @@ function potential_at_point(cset::CoilSet{T}, xyz::SVector) where {T}
       #compute ds for each coil, probably should save these
 
       #function to calculate components of A from a given point on the coil
-      function A_x(t::Float64)
+      function get_A_x(t::Float64)
         #calculate distance from point to coil section
-        ξ = sqrt((xyz[1] - xc(t))^2 + (xyz[2] -yc(t))^2 + (xyz[3] - zc(t)^2))
-        return coil.current/ξ * coil.dx(t)/coil.ds_mag(t)
+        ξ = sqrt((xyz[1] - xc(t))^2 + (xyz[2] -yc(t))^2 + (xyz[3] - zc(t))^2)
+        return coil.current/ξ * coil.dxdt(t)/coil.ds_mag(t)
       end
-      function A_y(t::Float64)
-        #calculate distance from point to coil section
-        ξ = sqrt((xyz[1] - xc(t))^2 + (xyz[2] -yc(t))^2 + (xyz[3] - zc(t)^2))
-        return coil.current/ξ * coil.dy(t)/coil.ds_mag(t)
+      function get_A_y(t::Float64)
+        ξ = sqrt((xyz[1] - xc(t))^2 + (xyz[2] -yc(t))^2 + (xyz[3] - zc(t))^2)
+        return coil.current/ξ * coil.dydt(t)/coil.ds_mag(t)
       end
-      function A_z(t::Float64)
-        #calculate distance from point to coil section
-        return coil.current/ξ * coil.dz(t)/coil.ds_mag(t)
+      function get_A_z(t::Float64)
+        ξ = sqrt((xyz[1] - xc(t))^2 + (xyz[2] -yc(t))^2 + (xyz[3] - zc(t))^2)
+        return coil.current/ξ * coil.dzdt(t)/coil.ds_mag(t)
       end
-     end
-     end
-     
-
-
+      Ax += quadgk(get_A_x, 0, 2π, rtol=1.0E-4)[1]
+      Ay += quadgk(get_A_y, 0, 2π, rtol=1.0E-4)[1]
+      Az += quadgk(get_A_z, 0, 2π, rtol=1.0E-4)[1]
+    end
+  end
+  return (Ax, Ay, Az)   
 end
 
 function potential_at_point(cset::CoilSet{T}, cc::Cylindrical) where {T}
   xyz = CartesianFromCylindrical(cc)
-  return potential_at_point(cset, xyz)
+  (Ax, Ay, Az) =  potential_at_point(cset, xyz)
+  #convert to Cylindrical
+  Ar = Ax * cos(cc.θ) + Ay * sin(cc.θ)
+  Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
+  return (Ar, Aθ, Az)
 end
 
 
