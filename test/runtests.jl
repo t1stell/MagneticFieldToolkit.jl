@@ -2,5 +2,5 @@ using MagneticFieldToolkit
 using Test
 
 @testset "MagneticFieldToolkit.jl" begin
-    # Write your tests here.
+  include("coil_tests.jl")
 end

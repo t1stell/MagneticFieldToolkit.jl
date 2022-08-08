@@ -9,7 +9,7 @@ end
 
 struct CoilFamily{FT}
   coil::Array{CoilFilament{FT}, 1}
-  label::String
+  name::String
 end
 """
   The coil hierarchy uses the convention common in various coil formats, like
@@ -59,6 +59,7 @@ function read_vmec_coils(filename::String)
   end
   nfamilies = length(family_names)
   nfilaments = length(coilends)
+  
   #Now read back through the file and assign stuff
   coil_set = Vector{CoilFamily{Float64}}(undef, nfamilies)
   for fam_index in 1:nfamilies
