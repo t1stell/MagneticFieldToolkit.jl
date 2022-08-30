@@ -5,7 +5,7 @@ using StructArrays
 using NetCDF
 using Interpolations
 using Polyester
-using DifferentialEquations
+using OrdinaryDiffEq
 using CoordinateTransformations
 using PlasmaEquilibriumToolkit
 
