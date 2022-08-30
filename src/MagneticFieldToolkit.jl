@@ -5,9 +5,8 @@ using StructArrays
 using NetCDF
 using Interpolations
 using Polyester
-using DifferentialEquations
-using QuadGK
-using Cubature
+using OrdinaryDiffEq
+using HCubature
 using CoordinateTransformations
 using PlasmaEquilibriumToolkit
 
