@@ -148,30 +148,50 @@ function extreme_coils(cset::CoilSet{T}, coord::Symbol; vmax=true) where T
   return vextreme
 end
 
+"""
+  compute_magnetic_potential(cset, xyz; rtol=rtol)
+  compute_magnetic_potential(cset, cc; rtol=rtol)
+  compute_magnetic_potential(coil, xyz; rtol=rtol)
+  compute_magnetic_potential(coil, cc; rtol=rtol)
 
-function potential_at_point(cset::CoilSet{T}, xyz::SVector;
+Function to compute a magnetic potential at a point from either an individual coil or a set of coils
+
+# Arguments
+ - `cset::Coilset`: A set of coils, can be obtained from using read_vmec_coils on an ASCII coils file
+ - `coil::CoilFilamet`: A singular filament (no standalone constructor yet)
+ - `xyz::SVector(3)`: A StaticVector representing the point to calculate the potential at in Cartesian coordinates
+ - `cc::Cylindrical`: A StaticVector representing the point to calculate the potential at in Cylindrical coordinates
+
+# Optional Arguments
+ - `rtol::Float64`: The required tolerance, default is 1.0E-10
+
+# Outputs
+ - `A::SVector(3)`: The vector potential field obtained from integrating μ_0/4π * I * ∫ds⃗/ξ where I is the current, and ξ is the distance between the point on the coil and the target point.
+
+"""
+function compute_magnetic_potential(cset::CoilSet{T}, xyz::SVector;
                             rtol=1.0E-10) where {T}
   A = [0.0, 0.0, 0.0]
   for family in cset.family
     for coil in family.coil
-      At = potential_at_point(coil, xyz, rtol=rtol)
+      At = compute_magnetic_potential(coil, xyz, rtol=rtol)
       A = A .+ At
     end
   end
   return A
 end
 
-function potential_at_point(cset::CoilSet{T}, cc::Cylindrical;
+function compute_magnetic_potential(cset::CoilSet{T}, cc::Cylindrical;
                             rtol = 1.0E-10) where {T}
   xyz = CartesianFromCylindrical(cc)
-  (Ax, Ay, Az) =  potential_at_point(cset, xyz, rtol=rtol)
+  (Ax, Ay, Az) =  compute_magnetic_potential(cset, xyz, rtol=rtol)
   #convert to Cylindrical
   Ar = Ax * cos(cc.θ) + Ay * sin(cc.θ)
   Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
   return (Ar, Aθ, Az)
 end
 
-function potential_at_point(coil::CoilFilament{T}, xyz::SVector;
+function compute_magnetic_potential(coil::CoilFilament{T}, xyz::SVector;
                             rtol = 1.0E-10) where{T}
   xc = coil.x
   yc = coil.y
@@ -186,39 +206,60 @@ function potential_at_point(coil::CoilFilament{T}, xyz::SVector;
   return A .* coil.current * μ0over4π
 end
 
-function potential_at_point(coil::CoilFilament{T}, cc::Cylindrical;
+function compute_magnetic_potential(coil::CoilFilament{T}, cc::Cylindrical;
                             rtol = 1.0E-10) where {T}
   xyz = CartesianFromCylindrical(cc)
-  (Ax, Ay, Az) =  potential_at_point(coil, xyz, rtol=rtol)
+  (Ax, Ay, Az) =  compute_magnetic_potential(coil, xyz, rtol=rtol)
   #convert to Cylindrical
   Ar = Ax * cos(cc.θ) + Ay * sin(cc.θ)
   Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
   return (Ar, Aθ, Az)
 end
 
-function bfield_at_point(cset::CoilSet{T}, xyz::SVector;
+"""
+  compute_magnetic_field(cset, xyz; rtol=rtol)
+  compute_magnetic_field(cset, cc; rtol=rtol)
+  compute_magnetic_field(coil, xyz; rtol=rtol)
+  compute_magnetic_field(coil, cc; rtol=rtol)
+
+Function to compute a magnetic field at a point from either an individual coil or a set of coils
+
+# Arguments
+ - `cset::Coilset`: A set of coils, can be obtained from using read_vmec_coils on an ASCII coils file
+ - `coil::CoilFilamet`: A singular filament (no standalone constructor yet)
+ - `xyz::SVector(3)`: A StaticVector representing the point to calculate the field at in Cartesian coordinates
+ - `cc::Cylindrical`: A StaticVector representing the point to calculate the field at in Cylindrical coordinates
+
+# Optional Arguments
+ - `rtol::Float64`: The required tolerance, default is 1.0E-10
+
+# Outputs
+ - `B::SVector(3)`: The vector magnetic field obtained from integrating μ_0/4π * I * ∫ds⃗ x ξ⃗/ξ^2 where I is the current, and ξ is the vector between the point on the coil and the target point.
+
+"""
+function compute_magnetic_field(cset::CoilSet{T}, xyz::SVector;
                             rtol=1.0E-10) where {T}
   B = [0.0, 0.0, 0.0]
   for family in cset.family
     for coil in family.coil
-      Bt = bfield_at_point(coil, xyz, rtol=rtol)
+      Bt = compute_magnetic_field(coil, xyz, rtol=rtol)
       B = B .+ Bt
     end
   end
   return B
 end
 
-function bfield_at_point(cset::CoilSet{T}, cc::Cylindrical;
+function compute_magnetic_field(cset::CoilSet{T}, cc::Cylindrical;
                          rtol=rtol) where{T}
   xyz = CartesianFromCylindrical(cc)
-  (Bx, By, Bz) =  bfield_at_point(cset, xyz, rtol=rtol)
+  (Bx, By, Bz) =  compute_magnetic_field(cset, xyz, rtol=rtol)
   #convert to Cylindrical
   Br = Bx * cos(cc.θ) + By * sin(cc.θ)
   Bθ = -Bx * sin(cc.θ) + By * cos(cc.θ)
   return (Br, Bθ, Bz)
 end
 
-function bfield_at_point(coil::CoilFilament{T}, xyz::SVector;
+function compute_magnetic_field(coil::CoilFilament{T}, xyz::SVector;
                          rtol=1.0E-10) where{T}
   xc = coil.x
   yc = coil.y
@@ -235,10 +276,10 @@ function bfield_at_point(coil::CoilFilament{T}, xyz::SVector;
 
 end
 
-function bfield_at_point(coil::CoilFilament{T}, cc::Cylindrical;
+function compute_magnetic_field(coil::CoilFilament{T}, cc::Cylindrical;
                          rtol=rtol) where{T}
   xyz = CartesianFromCylindrical(cc)
-  (Bx, By, Bz) =  bfield_at_point(coil, xyz, rtol=rtol)
+  (Bx, By, Bz) =  compute_magnetic_field(coil, xyz, rtol=rtol)
   #convert to Cylindrical
   Br = Bx * cos(cc.θ) + By * sin(cc.θ)
   Bθ = -Bx * sin(cc.θ) + By * cos(cc.θ)

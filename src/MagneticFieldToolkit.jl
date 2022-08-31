@@ -16,7 +16,7 @@ using PlasmaEquilibriumToolkit
 export read_mgrid, read_bmw, read_vmec_coils
 
 # Field calculations
-export potential_at_point
+export compute_magnetic_potential, compute_magnetic_field
 
 
 include("bfieldUtils.jl")
