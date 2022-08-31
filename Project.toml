@@ -1,7 +1,7 @@
 name = "MagneticFieldToolkit"
 uuid = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
 authors = ["Benjamin Faber <bfaber@wisc.edu>", "Aaron Bader <abader@engr.wisc.edu>", "Max Ruth <mer335@cornell.edu>"]
-version = "0.1.6"
+version = "0.1.7"
 
 [deps]
 CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
@@ -21,6 +21,7 @@ CairoMakie = "0.7, 0.8"
 CoordinateTransformations = "0.6"
 Interpolations = "0.14.3"
 NetCDF = "0.10, 0.11"
+OrdinaryDiffEq = "6"
 PlasmaEquilibriumToolkit = "0.5.5"
 Polyester = "0.5, 0.6"
 Requires = "1"
