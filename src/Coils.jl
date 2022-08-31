@@ -149,7 +149,8 @@ function extreme_coils(cset::CoilSet{T}, coord::Symbol; vmax=true) where T
 end
 
 
-function potential_at_point(cset::CoilSet{T}, xyz::SVector) where {T}
+function potential_at_point(cset::CoilSet{T}, xyz::SVector;
+                            rtol=1.0E-10) where {T}
   A = [0.0, 0.0, 0.0]
   for family in cset.family
     for coil in family.coil
@@ -166,22 +167,48 @@ function potential_at_point(cset::CoilSet{T}, xyz::SVector) where {T}
                        coil.current/ξ * coil.dydt(t)/coil.ds_mag(t),
                        coil.current/ξ * coil.dzdt(t)/coil.ds_mag(t))
       end
-      At = hquadrature(get_A,0, 2π,rtol=1.0E-7)[1]
+      At = hquadrature(get_A,0, 2π,rtol=rtol)[1]
       A = A .+ At
     end
   end
   return A .* μ0over4π
 end
 
-function potential_at_point(cset::CoilSet{T}, cc::Cylindrical) where {T}
+function potential_at_point(cset::CoilSet{T}, cc::Cylindrical;
+                            rtol = 1.0E-10) where {T}
   xyz = CartesianFromCylindrical(cc)
-  (Ax, Ay, Az) =  potential_at_point(cset, xyz)
+  (Ax, Ay, Az) =  potential_at_point(cset, xyz, rtol=rtol)
   #convert to Cylindrical
   Ar = Ax * cos(cc.θ) + Ay * sin(cc.θ)
   Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
   return (Ar, Aθ, Az)
 end
 
+function potential_at_point(coil::CoilFilament{T}, xyz::SVector;
+                            rtol = 1.0E-10) where{T}
+  xc = coil.x
+  yc = coil.y
+  zc = coil.z
+  function get_A(t::Float64)
+    ξ = sqrt((xyz[1] - xc(t))^2 + (xyz[2] -yc(t))^2 + (xyz[3] - zc(t))^2)
+    return SVector(coil.current/ξ * coil.dxdt(t)/coil.ds_mag(t),
+                   coil.current/ξ * coil.dydt(t)/coil.ds_mag(t),
+                   coil.current/ξ * coil.dzdt(t)/coil.ds_mag(t))
+  end
+  A = hquadrature(get_A, 0, 2π, rtol=1.0E-10)[1]
+  return A .* μ0over4π
+end
+
+function potential_at_point(coil::CoilFilament{T}, cc::Cylindrical;
+                            rtol = 1.0E-10) where {T}
+  xyz = CartesianFromCylindrical(cc)
+  (Ax, Ay, Az) =  potential_at_point(coil, xyz, rtol=rtol)
+  #convert to Cylindrical
+  Ar = Ax * cos(cc.θ) + Ay * sin(cc.θ)
+  Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
+  return (Ar, Aθ, Az)
+end
+#function bfield_at_point(cset::CoilSet{T}, cc::Cylindrical) where{T}
 
 """
   potential_from_coils(cset::Coilset, r_res::Int, z_res::Int)
@@ -206,6 +233,8 @@ function potential_from_coils(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
   if zmin == nothing
     zmin = extreme_coils(cset, :z, vmin = true)
   end
+
+  #calculate the potential here
 end  
 
 
