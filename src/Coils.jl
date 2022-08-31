@@ -154,24 +154,11 @@ function potential_at_point(cset::CoilSet{T}, xyz::SVector;
   A = [0.0, 0.0, 0.0]
   for family in cset.family
     for coil in family.coil
-      xc = coil.x
-      yc = coil.y
-      zc = coil.z
-      #compute ds for each coil, probably should save these
-
-      #function to calculate components of A from a given point on the coil
-      function get_A(t::Float64)
-        #calculate distance from point to coil section
-        ξ = sqrt((xyz[1] - xc(t))^2 + (xyz[2] -yc(t))^2 + (xyz[3] - zc(t))^2)
-        return SVector(coil.current/ξ * coil.dxdt(t)/coil.ds_mag(t),     
-                       coil.current/ξ * coil.dydt(t)/coil.ds_mag(t),
-                       coil.current/ξ * coil.dzdt(t)/coil.ds_mag(t))
-      end
-      At = hquadrature(get_A,0, 2π,rtol=rtol)[1]
+      At = potential_at_point(coil, xyz, rtol=rtol)
       A = A .+ At
     end
   end
-  return A .* μ0over4π
+  return A
 end
 
 function potential_at_point(cset::CoilSet{T}, cc::Cylindrical;
@@ -191,12 +178,12 @@ function potential_at_point(coil::CoilFilament{T}, xyz::SVector;
   zc = coil.z
   function get_A(t::Float64)
     ξ = sqrt((xyz[1] - xc(t))^2 + (xyz[2] -yc(t))^2 + (xyz[3] - zc(t))^2)
-    return SVector(coil.current/ξ * coil.dxdt(t)/coil.ds_mag(t),
-                   coil.current/ξ * coil.dydt(t)/coil.ds_mag(t),
-                   coil.current/ξ * coil.dzdt(t)/coil.ds_mag(t))
+    return SVector(coil.dxdt(t)/(coil.ds_mag(t) * ξ),
+                   coil.dydt(t)/(coil.ds_mag(t) * ξ),
+                   coil.dzdt(t)/(coil.ds_mag(t) * ξ))
   end
   A = hquadrature(get_A, 0, 2π, rtol=1.0E-10)[1]
-  return A .* μ0over4π
+  return A .* coil.current * μ0over4π
 end
 
 function potential_at_point(coil::CoilFilament{T}, cc::Cylindrical;
@@ -208,7 +195,56 @@ function potential_at_point(coil::CoilFilament{T}, cc::Cylindrical;
   Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
   return (Ar, Aθ, Az)
 end
-#function bfield_at_point(cset::CoilSet{T}, cc::Cylindrical) where{T}
+
+function bfield_at_point(cset::CoilSet{T}, xyz::SVector;
+                            rtol=1.0E-10) where {T}
+  B = [0.0, 0.0, 0.0]
+  for family in cset.family
+    for coil in family.coil
+      Bt = bfield_at_point(coil, xyz, rtol=rtol)
+      B = B .+ Bt
+    end
+  end
+  return B
+end
+
+function bfield_at_point(cset::CoilSet{T}, cc::Cylindrical;
+                         rtol=rtol) where{T}
+  xyz = CartesianFromCylindrical(cc)
+  (Bx, By, Bz) =  bfield_at_point(cset, xyz, rtol=rtol)
+  #convert to Cylindrical
+  Br = Bx * cos(cc.θ) + By * sin(cc.θ)
+  Bθ = -Bx * sin(cc.θ) + By * cos(cc.θ)
+  return (Br, Bθ, Bz)
+end
+
+function bfield_at_point(coil::CoilFilament{T}, xyz::SVector;
+                         rtol=1.0E-10) where{T}
+  xc = coil.x
+  yc = coil.y
+  zc = coil.z
+  function get_B(t::Float64)
+    
+    ξ = SVector((xyz[1] - xc(t)),(xyz[2] -yc(t)),(xyz[3] - zc(t)))
+    ξ_squared = ξ[1]^2 + ξ[2]^2 + ξ[3]^2
+    dlcrossr = cross(SVector(coil.dxdt(t), coil.dydt(t), coil.dzdt(t)), ξ)
+    return SVector(dlcrossr ./ ξ_squared)
+  end
+  B = hquadrature(get_B, 0, 2π, rtol=rtol)[1]
+  return B .* (coil.current * μ0over4π)
+
+end
+
+function bfield_at_point(coil::CoilFilament{T}, cc::Cylindrical;
+                         rtol=rtol) where{T}
+  xyz = CartesianFromCylindrical(cc)
+  (Bx, By, Bz) =  bfield_at_point(coil, xyz, rtol=rtol)
+  #convert to Cylindrical
+  Br = Bx * cos(cc.θ) + By * sin(cc.θ)
+  Bθ = -Bx * sin(cc.θ) + By * cos(cc.θ)
+  return (Br, Bθ, Bz)
+end
+
 
 """
   potential_from_coils(cset::Coilset, r_res::Int, z_res::Int)

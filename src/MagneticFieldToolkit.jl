@@ -6,6 +6,7 @@ using NetCDF
 using Interpolations
 using Polyester
 using OrdinaryDiffEq
+using LinearAlgebra
 using HCubature
 using CoordinateTransformations
 using PlasmaEquilibriumToolkit
