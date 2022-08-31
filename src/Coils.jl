@@ -178,17 +178,17 @@ function compute_magnetic_potential(cset::CoilSet{T}, xyz::SVector;
       A = A .+ At
     end
   end
-  return A
+  return SVector(A)
 end
 
 function compute_magnetic_potential(cset::CoilSet{T}, cc::Cylindrical;
                             rtol = 1.0E-10) where {T}
-  xyz = CartesianFromCylindrical(cc)
+  xyz = CartesianFromCylindrical()(cc)
   (Ax, Ay, Az) =  compute_magnetic_potential(cset, xyz, rtol=rtol)
   #convert to Cylindrical
   Ar = Ax * cos(cc.θ) + Ay * sin(cc.θ)
   Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
-  return (Ar, Aθ, Az)
+  return SVector(Ar, Aθ, Az)
 end
 
 function compute_magnetic_potential(coil::CoilFilament{T}, xyz::SVector;
@@ -203,17 +203,17 @@ function compute_magnetic_potential(coil::CoilFilament{T}, xyz::SVector;
                    coil.dzdt(t)/(coil.ds_mag(t) * ξ))
   end
   A = hquadrature(get_A, 0, 2π, rtol=1.0E-10)[1]
-  return A .* coil.current * μ0over4π
+  return SVector(A .* coil.current * μ0over4π)
 end
 
 function compute_magnetic_potential(coil::CoilFilament{T}, cc::Cylindrical;
                             rtol = 1.0E-10) where {T}
-  xyz = CartesianFromCylindrical(cc)
+  xyz = CartesianFromCylindrical()(cc)
   (Ax, Ay, Az) =  compute_magnetic_potential(coil, xyz, rtol=rtol)
   #convert to Cylindrical
   Ar = Ax * cos(cc.θ) + Ay * sin(cc.θ)
   Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
-  return (Ar, Aθ, Az)
+  return SVector(Ar, Aθ, Az)
 end
 
 """
@@ -246,17 +246,17 @@ function compute_magnetic_field(cset::CoilSet{T}, xyz::SVector;
       B = B .+ Bt
     end
   end
-  return B
+  return SVector(B)
 end
 
 function compute_magnetic_field(cset::CoilSet{T}, cc::Cylindrical;
-                         rtol=rtol) where{T}
-  xyz = CartesianFromCylindrical(cc)
+                         rtol=1.0E-10) where{T}
+  xyz = CartesianFromCylindrical()(cc)
   (Bx, By, Bz) =  compute_magnetic_field(cset, xyz, rtol=rtol)
   #convert to Cylindrical
   Br = Bx * cos(cc.θ) + By * sin(cc.θ)
   Bθ = -Bx * sin(cc.θ) + By * cos(cc.θ)
-  return (Br, Bθ, Bz)
+  return SVector(Br, Bθ, Bz)
 end
 
 function compute_magnetic_field(coil::CoilFilament{T}, xyz::SVector;
@@ -272,18 +272,18 @@ function compute_magnetic_field(coil::CoilFilament{T}, xyz::SVector;
     return SVector(dlcrossr ./ ξ_squared)
   end
   B = hquadrature(get_B, 0, 2π, rtol=rtol)[1]
-  return B .* (coil.current * μ0over4π)
+  return SVector(B .* (coil.current * μ0over4π))
 
 end
 
 function compute_magnetic_field(coil::CoilFilament{T}, cc::Cylindrical;
-                         rtol=rtol) where{T}
-  xyz = CartesianFromCylindrical(cc)
+                         rtol=1.0E-10) where{T}
+  xyz = CartesianFromCylindrical()(cc)
   (Bx, By, Bz) =  compute_magnetic_field(coil, xyz, rtol=rtol)
   #convert to Cylindrical
   Br = Bx * cos(cc.θ) + By * sin(cc.θ)
   Bθ = -Bx * sin(cc.θ) + By * cos(cc.θ)
-  return (Br, Bθ, Bz)
+  return SVector(Br, Bθ, Bz)
 end
 
 
