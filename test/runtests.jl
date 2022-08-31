@@ -1,4 +1,5 @@
 using MagneticFieldToolkit
+using StaticArrays
 using CoordinateTransformations
 using Test
 
