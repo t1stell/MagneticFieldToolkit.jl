@@ -1,3 +1,4 @@
+
 .script:
   script:
     - |
@@ -18,6 +19,7 @@
         c, t = get_summary(process_folder())
         using Printf
         @printf "Test coverage %.2f%%\n" 100c / t'
+
 Julia 1.7:
   image: julia:1.7
   extends:

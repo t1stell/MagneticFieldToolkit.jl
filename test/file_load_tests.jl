@@ -58,5 +58,4 @@
     @test isapprox(p2[2][2], 0.0014316070601660287, atol=atol)
     @test isapprox(p2[2][3], -6.159992591618763e-5, atol=atol)
   end
-
 end
