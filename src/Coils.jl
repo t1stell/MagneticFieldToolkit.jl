@@ -217,7 +217,7 @@ function compute_magnetic_potential(cset::CoilSet{T}, cc::Cylindrical;
 end
 
 function compute_magnetic_potential(coil::CoilFilament{T}, xyz::SVector;
-                            rtol = 1.0E-10, current=current) where{T}
+                            rtol = 1.0E-10, current=nothing) where{T}
   xc = coil.x
   yc = coil.y
   zc = coil.z
@@ -235,7 +235,7 @@ function compute_magnetic_potential(coil::CoilFilament{T}, xyz::SVector;
 end
 
 function compute_magnetic_potential(coil::CoilFilament{T}, cc::Cylindrical;
-                            rtol = 1.0E-10, current = current) where {T}
+                            rtol = 1.0E-10, current=nothing) where {T}
   xyz = CartesianFromCylindrical()(cc)
   (Ax, Ay, Az) =  compute_magnetic_potential(coil, xyz, rtol=rtol, current=current)
   #convert to Cylindrical
