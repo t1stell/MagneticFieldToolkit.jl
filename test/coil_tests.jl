@@ -40,6 +40,10 @@
     @test isapprox(compute_magnetic_field(fil1, cc), SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_lo)
     @test isapprox(compute_magnetic_field(cs1coil, xyz), SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_lo)
     @test isapprox(compute_magnetic_field(cs1coil, cc), SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_lo)
+    @test isapprox(compute_magnetic_field(fil1, xyz, current=10.0), SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_lo)
+    @test isapprox(compute_magnetic_field(fil1, cc, current=10.0), SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_lo)
+    @test isapprox(compute_magnetic_field(cs1coil, xyz, currents=[10.0]), SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_lo)
+    @test isapprox(compute_magnetic_field(cs1coil, cc, currents=[10.0]), SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_lo)
   end
 end
 
