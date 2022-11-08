@@ -7,8 +7,6 @@
         Pkg.Registry.add(RegistrySpec(url = "https://github.com/JuliaRegistries/General.git"))
         Pkg.Registry.add(RegistrySpec(url = "https://gitlab.com/wistell/WistellRegistry.git"))
         Pkg.build()
-        Pkg.add("StaticArrays")
-        Pkg.add("CoordinateTransformations")
         Pkg.test(coverage=true)'
 .coverage:
   coverage: /Test coverage (\d+\.\d+%)/

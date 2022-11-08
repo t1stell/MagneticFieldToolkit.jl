@@ -32,6 +32,8 @@ julia = "1.6"
 
 [extras]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
