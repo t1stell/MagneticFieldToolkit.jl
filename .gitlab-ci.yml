@@ -6,7 +6,7 @@
         using Pkg
         Pkg.Registry.add(RegistrySpec(url = "https://github.com/JuliaRegistries/General.git"))
         Pkg.Registry.add(RegistrySpec(url = "https://gitlab.com/wistell/WistellRegistry.git"))
-        Pkg.add("StaticArrays", "CoordinateTransformations")
+        Pkg.add(["StaticArrays", "CoordinateTransformations"])
         Pkg.build()
         Pkg.test(coverage=true)'
 .coverage:
