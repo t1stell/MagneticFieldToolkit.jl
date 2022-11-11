@@ -167,7 +167,40 @@ function read_mgrid(filename::AbstractString,
     Bzf[:,end,:] = Bz[:,1,:]
     Bθf[:,end,:] = Bθ[:,1,:]
 
-    return MagneticField(field_coords, Brf, Bθf, Bzf, nfp=nfp)
+    #No potential, so return here
+    if !("ar_001" in keys(mgridnetcdf.vars))
+      return MagneticField(field_coords, Brf, Bθf, Bzf, nfp=nfp)
+    end
+
+    #Some mgrids will also have magnetic potentials, so let's add them also
+    Ar = permutedims(NetCDF.readvar(mgrid_vars["ar_001"]).*current[1],[1,3,2])
+    Az = permutedims(NetCDF.readvar(mgrid_vars["az_001"]).*current[1],[1,3,2])
+    Aθ = permutedims(NetCDF.readvar(mgrid_vars["ap_001"]).*current[1],[1,3,2])
+
+    for i in 2:external_coils
+        if i > length(current)
+            continue
+        end
+        numeral = lpad(i,3,'0')
+        Ar += permutedims(NetCDF.readvar(mgrid_vars["ar_"*numeral]).*current[i],[1,3,2])
+        Az += permutedims(NetCDF.readvar(mgrid_vars["az_"*numeral]).*current[i],[1,3,2])
+        Aθ += permutedims(NetCDF.readvar(mgrid_vars["ap_"*numeral]).*current[i],[1,3,2])
+    end
+
+    Arf = zeros(nr, nθ+1, nz)
+    Azf = zeros(nr, nθ+1, nz)
+    Aθf = zeros(nr, nθ+1, nz)
+
+    Arf[:,1:end-1,:] = Ar[:,:,:]
+    Azf[:,1:end-1,:] = Az[:,:,:]
+    Aθf[:,1:end-1,:] = Aθ[:,:,:]
+    
+    Arf[:,end,:] = Ar[:,1,:]
+    Azf[:,end,:] = Az[:,1,:]
+    Aθf[:,end,:] = Aθ[:,1,:]
+    
+
+    return MagneticField(field_coords, Brf, Bθf, Bzf, Arf, Aθf, Azf, nfp=nfp)
 
 end
 
