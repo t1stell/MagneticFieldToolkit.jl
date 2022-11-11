@@ -56,7 +56,7 @@ all to one, so we can specify our own currents. If you want to use the
 actual currents in the file (equivalent to the "raw current") option in
 mgrid, you can set the "use_current" flag to true.
 """
-function read_vmec_coils(filename::String; use_current = false, node_res = 128)
+function read_vmec_coils(filename::String; use_current = false, node_res = 1025)
   #we read through the file twice, first to determine how many coil families
   #there are and how many coils in each family, then again
   #to save the actual coil data

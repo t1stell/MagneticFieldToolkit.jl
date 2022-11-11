@@ -4,7 +4,6 @@
   cset = read_vmec_coils(coilname)
   rtol = 1.0E-6
   rtol_lo = 1.0E-4
-  rtol_verylo = 1.0E-2
   @testset "verify coil reading" begin
     ncoils = 0
     @test length(cset.family) == 5
@@ -56,21 +55,21 @@
   end
   @testset "do simplified biot-savart calculation" begin
     @test isapprox(compute_magnetic_field(fil1, xyz), 
-          SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_verylo)
+          SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_lo)
     @test isapprox(compute_magnetic_field(fil1, cc), 
-          SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_verylo)
+          SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_lo)
     @test isapprox(compute_magnetic_field(cs1coil, xyz),
-          SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_verylo)
+          SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_lo)
     @test isapprox(compute_magnetic_field(cs1coil, cc), 
-          SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_verylo)
+          SVector(0.0, -2*π*1.0E-7, 0.0), rtol = rtol_lo)
     @test isapprox(compute_magnetic_field(fil1, xyz, current=10.0), 
-          SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_verylo)
+          SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_lo)
     @test isapprox(compute_magnetic_field(fil1, cc, current=10.0), 
-          SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_verylo)
+          SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_lo)
     @test isapprox(compute_magnetic_field(cs1coil, xyz, currents=[10.0]), 
-          SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_verylo)
+          SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_lo)
     @test isapprox(compute_magnetic_field(cs1coil, cc, currents=[10.0]), 
-          SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_verylo)
+          SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_lo)
   end
   @testset "compute magnetic potential for single current loop" begin
     @test isapprox(compute_magnetic_potential(fil1, xyz), SVector(3.809452748892134e-22,  0.0,  2.0525360516352236e-12), rtol = rtol_lo)
