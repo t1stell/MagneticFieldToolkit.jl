@@ -10,6 +10,21 @@ struct CoilFilament{FT}
   dzdt::Interpolations.Extrapolation
   drdt::Interpolations.Extrapolation
   ds_mag::Interpolations.Extrapolation
+  #maybe change these to SVectors?
+  xnodes::Array{FT, 1}
+  ynodes::Array{FT, 1}
+  znodes::Array{FT, 1}
+  rnodes::Array{FT, 1}
+  #compute on half nodes for quick biot-savart calculation
+  xnodes_half::Array{FT, 1}
+  ynodes_half::Array{FT, 1}
+  znodes_half::Array{FT, 1}
+  rnodes_half::Array{FT, 1}
+  dxnodes::Array{FT, 1}
+  dynodes::Array{FT, 1}
+  dznodes::Array{FT, 1}
+  drnodes::Array{FT, 1}
+  dsnodes::Array{FT, 1}
   current::FT
 end
 
@@ -37,11 +52,11 @@ Right now the code assumes all coils exist and no explicit rotations
 are calculated. Check coil file to verify.
 
 Coil files tend to have assigned currents. Typically we want to set these
-all to zero, so we can specify our own currents. If you want to use the
+all to one, so we can specify our own currents. If you want to use the
 actual currents in the file (equivalent to the "raw current") option in
 mgrid, you can set the "use_current" flag to true.
 """
-function read_vmec_coils(filename::String; use_current = false)
+function read_vmec_coils(filename::String; use_current = false, node_res = 128)
   #we read through the file twice, first to determine how many coil families
   #there are and how many coils in each family, then again
   #to save the actual coil data
@@ -119,8 +134,35 @@ function read_vmec_coils(filename::String; use_current = false)
       dzdt = cubic_spline_interpolation(ts, dz)
       drdt = cubic_spline_interpolation(ts, dr)
       ds = cubic_spline_interpolation(ts, ds_mag)
+
+      #calculate coils on the node resolution
+      ts = range(0, 2π, node_res)
+      xnodes = [xs(t) for t in ts]
+      ynodes = [ys(t) for t in ts]
+      znodes = [zs(t) for t in ts]
+      rnodes = [rs(t) for t in ts]
+      #compute the half nodes
+      tstep = ts[2] - ts[1]
+      tshalf = range(tstep/2, 2π - tstep/2, node_res-1)
+      xnodes_half = [xs(t) for t in tshalf]
+      ynodes_half = [ys(t) for t in tshalf]
+      znodes_half = [zs(t) for t in tshalf]
+      rnodes_half = [rs(t) for t in tshalf]
+      #compute the lengths along the coils
+      dxnodes = [xnodes[i+1] - xnodes[i] for i in 1:node_res-1]
+      dynodes = [ynodes[i+1] - ynodes[i] for i in 1:node_res-1]
+      dznodes = [znodes[i+1] - znodes[i] for i in 1:node_res-1]
+      drnodes = [rnodes[i+1] - rnodes[i] for i in 1:node_res-1]
+      dsnodes = [ sqrt( (xnodes[i+1] - xnodes[i])^2 + 
+                        (ynodes[i+1] - ynodes[i])^2 + 
+                        (znodes[i+1] - znodes[i])^2) for i in 1:node_res-1]
+
       coil_family[j] = CoilFilament(xs, ys, zs, rs, dxdt, dydt, 
-                                    dzdt, drdt, ds, current)
+                                    dzdt, drdt, ds, 
+                                    xnodes, ynodes, znodes, rnodes,
+                                    xnodes_half, ynodes_half, znodes_half, rnodes_half,
+                                    dxnodes, dynodes, dznodes, drnodes,
+                                    dsnodes, current)
     end
     coil_set[fam_index] = CoilFamily(coil_family, family_names[fam_index])
   end
@@ -201,7 +243,8 @@ function compute_magnetic_potential(cset::CoilSet{T}, xyz::SVector;
 end
 
 function compute_magnetic_potential(cset::CoilSet{T}, cc::Cylindrical;
-                            rtol = 1.0E-10, currents=nothing) where {T}
+                            rtol = 1.0E-10, currents=nothing,
+                            exact=false) where {T}
   if currents != nothing
     if length(currents) < length(cset.family)
       print("Currents vector must have at least as many entries as coil families")
@@ -217,7 +260,12 @@ function compute_magnetic_potential(cset::CoilSet{T}, cc::Cylindrical;
 end
 
 function compute_magnetic_potential(coil::CoilFilament{T}, xyz::SVector;
-                            rtol = 1.0E-10, current=nothing) where{T}
+                            rtol = 1.0E-10, current=nothing,
+                            exact=false) where{T}
+#  if exact
+#    return compute_magnetic_potential_exact(coil, xyz, rtol=rtol, current=current)
+#  end
+
   xc = coil.x
   yc = coil.y
   zc = coil.z
@@ -267,7 +315,7 @@ Function to compute a magnetic field at a point from either an individual coil o
 
 """
 function compute_magnetic_field(cset::CoilSet{T}, xyz::SVector;
-                            rtol=1.0E-10, currents=nothing) where {T}
+                            rtol=1.0E-10, currents=nothing, exact=false) where {T}
   B = [0.0, 0.0, 0.0]
   if currents != nothing
     if length(currents) < length(cset.family)
@@ -282,7 +330,7 @@ function compute_magnetic_field(cset::CoilSet{T}, xyz::SVector;
       current = currents[idx]
     end
     for coil in family.coil
-      Bt = compute_magnetic_field(coil, xyz, rtol=rtol, current=current)
+      Bt = compute_magnetic_field(coil, xyz, rtol=rtol, current=current, exact=exact)
       B = B .+ Bt
     end
   end
@@ -290,7 +338,7 @@ function compute_magnetic_field(cset::CoilSet{T}, xyz::SVector;
 end
 
 function compute_magnetic_field(cset::CoilSet{T}, cc::Cylindrical;
-                         rtol=1.0E-10, currents=nothing) where{T}
+                         rtol=1.0E-10, currents=nothing, exact=false) where{T}
   if currents != nothing
     if length(currents) < length(cset.family)
       print("Currents vector must have at least as many entries as coil families")
@@ -298,7 +346,7 @@ function compute_magnetic_field(cset::CoilSet{T}, cc::Cylindrical;
     end
   end
   xyz = CartesianFromCylindrical()(cc)
-  (Bx, By, Bz) =  compute_magnetic_field(cset, xyz, rtol=rtol, currents=currents)
+  (Bx, By, Bz) =  compute_magnetic_field(cset, xyz, rtol=rtol, currents=currents, exact=exact)
   #convert to Cylindrical
   Br = Bx * cos(cc.θ) + By * sin(cc.θ)
   Bθ = -Bx * sin(cc.θ) + By * cos(cc.θ)
@@ -306,7 +354,47 @@ function compute_magnetic_field(cset::CoilSet{T}, cc::Cylindrical;
 end
 
 function compute_magnetic_field(coil::CoilFilament{T}, xyz::SVector;
-                         rtol=1.0E-10, current=nothing) where{T}
+                         rtol=1.0E-10, current=nothing, 
+                         exact=false) where{T}
+  if exact
+    return compute_magnetic_field_exact(coil, xyz, rtol=rtol, current=current)
+  end
+  xc = coil.xnodes
+  yc = coil.ynodes
+  zc = coil.znodes
+  xch = coil.xnodes_half
+  ych = coil.ynodes_half
+  zch = coil.znodes_half
+  dxc = coil.dxnodes
+  dyc = coil.dynodes
+  dzc = coil.dznodes
+  node_res = length(xc)
+  ξ_x = [xyz[1] - xch[i] for i in 1:node_res-1]
+  ξ_y = [xyz[2] - ych[i] for i in 1:node_res-1]
+  ξ_z = [xyz[3] - zch[i] for i in 1:node_res-1]
+  ξ_squared = ξ_x.^2 .+ ξ_y.^2 .+ ξ_z.^2
+  dlcrossr = [cross(SVector(dxc[i], dyc[i], dzc[i]), SVector(ξ_x[i], ξ_y[i], ξ_z[i])) 
+             for i in node_res - 1]
+  if current == nothing
+    current = coil.current
+  end
+  return (current * μ0over4π)*sum(dlcrossr ./ ξ_squared)
+
+end
+
+function compute_magnetic_field(coil::CoilFilament{T}, cc::Cylindrical;
+                         rtol=1.0E-10, current=nothing, exact=false) where{T}
+  xyz = CartesianFromCylindrical()(cc)
+  (Bx, By, Bz) =  compute_magnetic_field(coil, xyz, rtol=rtol, current=current, exact=exact)
+  #convert to Cylindrical
+  Br = Bx * cos(cc.θ) + By * sin(cc.θ)
+  Bθ = -Bx * sin(cc.θ) + By * cos(cc.θ)
+  return SVector(Br, Bθ, Bz)
+end
+
+#More accurate integration using quadrature.  Slow
+function compute_magnetic_field_exact(coil::CoilFilament{T}, xyz::SVector;
+                                      rtol=1.0E-10, current=nothing) where {T}
   xc = coil.x
   yc = coil.y
   zc = coil.z
@@ -323,16 +411,6 @@ function compute_magnetic_field(coil::CoilFilament{T}, xyz::SVector;
   B = hquadrature(get_B, 0, 2π, rtol=rtol)[1]
   return SVector(B .* (current * μ0over4π))
 
-end
-
-function compute_magnetic_field(coil::CoilFilament{T}, cc::Cylindrical;
-                         rtol=1.0E-10, current=nothing) where{T}
-  xyz = CartesianFromCylindrical()(cc)
-  (Bx, By, Bz) =  compute_magnetic_field(coil, xyz, rtol=rtol, current=current)
-  #convert to Cylindrical
-  Br = Bx * cos(cc.θ) + By * sin(cc.θ)
-  Bθ = -Bx * sin(cc.θ) + By * cos(cc.θ)
-  return SVector(Br, Bθ, Bz)
 end
 
 
