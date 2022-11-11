@@ -370,18 +370,12 @@ function compute_magnetic_field(coil::CoilFilament{T}, xyz::SVector;
   ξ_y = [xyz[2] - ych[i] for i in 1:seg_res]
   ξ_z = [xyz[3] - zch[i] for i in 1:seg_res]
   ξ_cubed = (ξ_x.^2 .+ ξ_y.^2 .+ ξ_z.^2).^(1.5)
-  #slowish
-  Bfield = zeros(3)
-  for i in 1:seg_res
-    Bfield = Bfield .+ cross(SVector(dxc[i], dyc[i], dzc[i]), SVector(ξ_x[i], ξ_y[i], ξ_z[i])) / ξ_cubed[i]
-  end
-#  dlcrossr = [cross(SVector(dxc[i], dyc[i], dzc[i]), SVector(ξ_x[i], ξ_y[i], ξ_z[i])) 
-#             for i in seg_res]
+  dlcrossr = [cross(SVector(dxc[i], dyc[i], dzc[i]), SVector(ξ_x[i], ξ_y[i], ξ_z[i])) 
+             for i in 1:seg_res]
   if current == nothing
     current = coil.current
   end
-  return (current * μ0over4π) * Bfield
-  #return (current * μ0over4π)*sum(dlcrossr ./ ξ_cubed)
+  return (current * μ0over4π)*sum(dlcrossr ./ ξ_cubed)
 
 end
 
