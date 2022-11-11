@@ -71,15 +71,29 @@
     @test isapprox(compute_magnetic_field(cs1coil, cc, currents=[10.0]), 
           SVector(0.0, -2*π*1.0E-6, 0.0), rtol = rtol_lo)
   end
-  @testset "compute magnetic potential for single current loop" begin
-    @test isapprox(compute_magnetic_potential(fil1, xyz), SVector(3.809452748892134e-22,  0.0,  2.0525360516352236e-12), rtol = rtol_lo)
-    @test isapprox(compute_magnetic_potential(fil1, cc), SVector(3.809452748892134e-22,  0.0,  2.0525360516352236e-12), rtol = rtol_lo)
-    @test isapprox(compute_magnetic_potential(cs1coil, xyz), SVector(3.809452748892134e-22,  0.0,  2.0525360516352236e-12), rtol = rtol_lo)
-    @test isapprox(compute_magnetic_potential(cs1coil, cc), SVector(3.809452748892134e-22,  0.0,  2.0525360516352236e-12), rtol = rtol_lo)
-    @test isapprox(compute_magnetic_potential(fil1, xyz, current=10.0), SVector(3.809452748892134e-21,  0.0,  2.0525360516352236e-11), rtol = rtol_lo)
-    @test isapprox(compute_magnetic_potential(fil1, cc, current=10.0), SVector(3.809452748892134e-21,  0.0,  2.0525360516352236e-11), rtol = rtol_lo)
-    @test isapprox(compute_magnetic_potential(cs1coil, xyz, currents=[10.0]), SVector(3.809452748892134e-21,  0.0,  2.0525360516352236e-11), rtol = rtol_lo)
-    @test isapprox(compute_magnetic_potential(cs1coil, cc, currents=[10.0]), SVector(3.809452748892134e-21,  0.0,  2.0525360516352236e-11), rtol = rtol_lo)
+  
+  @testset "compute magnetic potential for coil set, tested against mgrid" begin
+    currents = [10.0, 10.0, 10.0, 10.0, 10.0]
+    @test isapprox(compute_magnetic_potential(cset, xyz), 
+          SVector(0.0,  0.0,  -1.0816251E-7), rtol = rtol_lo)
+    @test isapprox(compute_magnetic_potential(cset, cc), 
+          SVector(0.0,  0.0,  -1.0816251E-7), rtol = rtol_lo)
+    @test isapprox(compute_magnetic_potential(cset, xyz, currents=currents), 
+          SVector(0.0,  0.0,  -1.0816251E-6), rtol = rtol_lo)
+    @test isapprox(compute_magnetic_potential(cset, cc, currents=currents), 
+          SVector(0.0,  0.0,  -1.0816251E-6), rtol = rtol_lo)
   end
+  @testset "compute magnetic potential for coil set (exact), tested against mgrid" begin
+    currents = [10.0, 10.0, 10.0, 10.0, 10.0]
+    @test isapprox(compute_magnetic_potential(cset, xyz, exact=true), 
+          SVector(0.0,  0.0,  -1.0815561E-7), rtol = rtol_lo)
+    @test isapprox(compute_magnetic_potential(cset, cc, exact=true), 
+          SVector(0.0,  0.0,  -1.0815561E-7), rtol = rtol_lo)
+    @test isapprox(compute_magnetic_potential(cset, xyz, currents=currents, exact=true), 
+          SVector(0.0,  0.0,  -1.0815561E-6), rtol = rtol_lo)
+    @test isapprox(compute_magnetic_potential(cset, cc, currents=currents, exact=true), 
+          SVector(0.0,  0.0,  -1.0815561E-6), rtol = rtol_lo)
+  end
+
 end
 

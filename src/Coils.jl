@@ -220,7 +220,7 @@ Function to compute a magnetic potential at a point from either an individual co
 
 """
 function compute_magnetic_potential(cset::CoilSet{T}, xyz::SVector;
-                            rtol=1.0E-10, currents=nothing) where {T}
+                            rtol=1.0E-10, currents=nothing, exact=false) where {T}
   A = [0.0, 0.0, 0.0]
   if currents != nothing
     if length(currents) < length(cset.family)
@@ -235,7 +235,7 @@ function compute_magnetic_potential(cset::CoilSet{T}, xyz::SVector;
       current = currents[idx]
     end
     for coil in family.coil
-      At = compute_magnetic_potential(coil, xyz, rtol=rtol, current=current)
+      At = compute_magnetic_potential(coil, xyz, rtol=rtol, current=current, exact=exact)
       A = A .+ At
     end
   end
@@ -252,7 +252,7 @@ function compute_magnetic_potential(cset::CoilSet{T}, cc::Cylindrical;
     end
   end
   xyz = CartesianFromCylindrical()(cc)
-  (Ax, Ay, Az) =  compute_magnetic_potential(cset, xyz, rtol=rtol, currents=currents)
+  (Ax, Ay, Az) =  compute_magnetic_potential(cset, xyz, rtol=rtol, currents=currents, exact=exact)
   #convert to Cylindrical
   Ar = Ax * cos(cc.θ) + Ay * sin(cc.θ)
   Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
@@ -262,10 +262,42 @@ end
 function compute_magnetic_potential(coil::CoilFilament{T}, xyz::SVector;
                             rtol = 1.0E-10, current=nothing,
                             exact=false) where{T}
-#  if exact
-#    return compute_magnetic_potential_exact(coil, xyz, rtol=rtol, current=current)
-#  end
+  if exact
+    return compute_magnetic_potential_exact(coil, xyz, rtol=rtol, current=current)
+  end
+  xch = coil.xnodes_half
+  ych = coil.ynodes_half
+  zch = coil.znodes_half
+  dxc = coil.dxnodes
+  dyc = coil.dynodes
+  dzc = coil.dznodes
+  seg_res = length(xch)
+  ξ_x = [xyz[1] - xch[i] for i in 1:seg_res]
+  ξ_y = [xyz[2] - ych[i] for i in 1:seg_res]
+  ξ_z = [xyz[3] - zch[i] for i in 1:seg_res]
+  ξ_mag = sqrt.(ξ_x.^2 .+ ξ_y.^2 .+ ξ_z.^2)
+  A = sum([ SVector(dxc[i], dyc[i], dzc[i]) / ξ_mag[i] for i in 1:seg_res])
+  if current == nothing
+    current = coil.current
+  end
+  return A * current * μ0over4π 
+  
+end
 
+
+
+function compute_magnetic_potential(coil::CoilFilament{T}, cc::Cylindrical;
+                            rtol = 1.0E-10, current=nothing, exact=false) where {T}
+  xyz = CartesianFromCylindrical()(cc)
+  (Ax, Ay, Az) =  compute_magnetic_potential(coil, xyz, rtol=rtol, current=current, exact=exact)
+  #convert to Cylindrical
+  Ar = Ax * cos(cc.θ) + Ay * sin(cc.θ)
+  Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
+  return SVector(Ar, Aθ, Az)
+end
+
+function compute_magnetic_potential_exact(coil::CoilFilament{T}, xyz::SVector;
+                                          rtol = 1.0E-10, current=nothing) where{T}
   xc = coil.x
   yc = coil.y
   zc = coil.z
@@ -280,16 +312,6 @@ function compute_magnetic_potential(coil::CoilFilament{T}, xyz::SVector;
   end
   A = hquadrature(get_A, 0, 2π, rtol=1.0E-10)[1]
   return SVector(A .* current * μ0over4π)
-end
-
-function compute_magnetic_potential(coil::CoilFilament{T}, cc::Cylindrical;
-                            rtol = 1.0E-10, current=nothing) where {T}
-  xyz = CartesianFromCylindrical()(cc)
-  (Ax, Ay, Az) =  compute_magnetic_potential(coil, xyz, rtol=rtol, current=current)
-  #convert to Cylindrical
-  Ar = Ax * cos(cc.θ) + Ay * sin(cc.θ)
-  Aθ = -Ax * sin(cc.θ) + Ay * cos(cc.θ)
-  return SVector(Ar, Aθ, Az)
 end
 
 """
