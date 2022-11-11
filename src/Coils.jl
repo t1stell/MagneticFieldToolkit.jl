@@ -149,13 +149,13 @@ function read_vmec_coils(filename::String; use_current = false, node_res = 1025)
       znodes_half = [zs(t) for t in tshalf]
       rnodes_half = [rs(t) for t in tshalf]
       #compute the lengths along the coils
-      dxnodes = [xnodes[i+1] - xnodes[i] for i in 1:node_res-1]
-      dynodes = [ynodes[i+1] - ynodes[i] for i in 1:node_res-1]
-      dznodes = [znodes[i+1] - znodes[i] for i in 1:node_res-1]
-      drnodes = [rnodes[i+1] - rnodes[i] for i in 1:node_res-1]
       dsnodes = [ sqrt( (xnodes[i+1] - xnodes[i])^2 + 
                         (ynodes[i+1] - ynodes[i])^2 + 
                         (znodes[i+1] - znodes[i])^2) for i in 1:node_res-1]
+      dxnodes = [(xnodes[i+1] - xnodes[i]) for i in 1:node_res-1]
+      dynodes = [(ynodes[i+1] - ynodes[i]) for i in 1:node_res-1]
+      dznodes = [(znodes[i+1] - znodes[i]) for i in 1:node_res-1]
+      drnodes = [(rnodes[i+1] - rnodes[i]) for i in 1:node_res-1]
 
       coil_family[j] = CoilFilament(xs, ys, zs, rs, dxdt, dydt, 
                                     dzdt, drdt, ds, 
@@ -359,26 +359,29 @@ function compute_magnetic_field(coil::CoilFilament{T}, xyz::SVector;
   if exact
     return compute_magnetic_field_exact(coil, xyz, rtol=rtol, current=current)
   end
-  xc = coil.xnodes
-  yc = coil.ynodes
-  zc = coil.znodes
   xch = coil.xnodes_half
   ych = coil.ynodes_half
   zch = coil.znodes_half
   dxc = coil.dxnodes
   dyc = coil.dynodes
   dzc = coil.dznodes
-  node_res = length(xc)
-  ξ_x = [xyz[1] - xch[i] for i in 1:node_res-1]
-  ξ_y = [xyz[2] - ych[i] for i in 1:node_res-1]
-  ξ_z = [xyz[3] - zch[i] for i in 1:node_res-1]
-  ξ_squared = ξ_x.^2 .+ ξ_y.^2 .+ ξ_z.^2
-  dlcrossr = [cross(SVector(dxc[i], dyc[i], dzc[i]), SVector(ξ_x[i], ξ_y[i], ξ_z[i])) 
-             for i in node_res - 1]
+  seg_res = length(xch)
+  ξ_x = [xyz[1] - xch[i] for i in 1:seg_res]
+  ξ_y = [xyz[2] - ych[i] for i in 1:seg_res]
+  ξ_z = [xyz[3] - zch[i] for i in 1:seg_res]
+  ξ_cubed = (ξ_x.^2 .+ ξ_y.^2 .+ ξ_z.^2).^(1.5)
+  #slowish
+  Bfield = zeros(3)
+  for i in 1:seg_res
+    Bfield = Bfield .+ cross(SVector(dxc[i], dyc[i], dzc[i]), SVector(ξ_x[i], ξ_y[i], ξ_z[i])) / ξ_cubed[i]
+  end
+#  dlcrossr = [cross(SVector(dxc[i], dyc[i], dzc[i]), SVector(ξ_x[i], ξ_y[i], ξ_z[i])) 
+#             for i in seg_res]
   if current == nothing
     current = coil.current
   end
-  return (current * μ0over4π)*sum(dlcrossr ./ ξ_squared)
+  return (current * μ0over4π) * Bfield
+  #return (current * μ0over4π)*sum(dlcrossr ./ ξ_cubed)
 
 end
 
@@ -401,9 +404,9 @@ function compute_magnetic_field_exact(coil::CoilFilament{T}, xyz::SVector;
   function get_B(t::Float64)
     
     ξ = SVector((xyz[1] - xc(t)),(xyz[2] -yc(t)),(xyz[3] - zc(t)))
-    ξ_squared = ξ[1]^2 + ξ[2]^2 + ξ[3]^2
+    ξ_cubed = (ξ[1]^2 + ξ[2]^2 + ξ[3]^2).^(1.5)
     dlcrossr = cross(SVector(coil.dxdt(t), coil.dydt(t), coil.dzdt(t)), ξ)
-    return SVector(dlcrossr ./ ξ_squared)
+    return SVector(dlcrossr ./ ξ_cubed)
   end
   if current == nothing
     current = coil.current
