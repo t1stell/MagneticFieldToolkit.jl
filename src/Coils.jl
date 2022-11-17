@@ -101,6 +101,7 @@ function read_vmec_coils(filename::String; use_current = false, node_res = 1025)
       yc = Vector{Float64}(undef, 0)
       zc = Vector{Float64}(undef, 0)
       current = nothing
+      shouldflip = false
       for j in start_index:end_index
         dum = split(lines[j])
         if length(dum) < 4
@@ -109,12 +110,23 @@ function read_vmec_coils(filename::String; use_current = false, node_res = 1025)
         push!(xc, parse(Float64, dum[1]))
         push!(yc, parse(Float64, dum[2]))
         push!(zc, parse(Float64, dum[3]))
-        if current == nothing && use_current
-          current = parse(Float64, dum[4])
+        tempcurrent = parse(Float64, dum[4])
+        if j == start_index && tempcurrent < 0
+          shouldflip = true
+        end
+        if j == start_index && use_current
+          current = tempcurrent
         else
           current = 1.0 #scaled current
         end
       end
+      #flip the reversed ones (this is a really dumb convention)
+      if shouldflip
+        xc = reverse(xc)
+        yc = reverse(yc)
+        zc = reverse(zc)
+      end
+
       #make the splines
       ts = range(0, 2π, length(xc))
       rc = sqrt.(xc.^2 + yc.^2)
