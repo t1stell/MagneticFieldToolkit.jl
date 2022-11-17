@@ -92,7 +92,7 @@ function read_vmec_coils(filename::String; use_current = false, node_res = 1025)
     coil_family = Vector{CoilFilament{Float64}}(undef, coils_per_family[fam_index])
     #get all the indices
     family_indices = findall(x->x==fam_index, family_labels)
-    for (j, coil_index) in enumerate(family_indices)
+    for (k, coil_index) in enumerate(family_indices)
       #guess at start index
       coil_index == 1 ? start_index = 1 : start_index = coilends[coil_index-1]+1
       end_index = coilends[coil_index]
@@ -100,6 +100,7 @@ function read_vmec_coils(filename::String; use_current = false, node_res = 1025)
       xc = Vector{Float64}(undef, 0)
       yc = Vector{Float64}(undef, 0)
       zc = Vector{Float64}(undef, 0)
+      
       current = nothing
       shouldflip = false
       for j in start_index:end_index
@@ -111,10 +112,10 @@ function read_vmec_coils(filename::String; use_current = false, node_res = 1025)
         push!(yc, parse(Float64, dum[2]))
         push!(zc, parse(Float64, dum[3]))
         tempcurrent = parse(Float64, dum[4])
-        if j == start_index && tempcurrent < 0
+        if j == end_index-1 && tempcurrent > 0 
           shouldflip = true
         end
-        if j == start_index && use_current
+        if j == end_index-1 && use_current
           current = tempcurrent
         else
           current = 1.0 #scaled current
@@ -169,7 +170,7 @@ function read_vmec_coils(filename::String; use_current = false, node_res = 1025)
       dznodes = [(znodes[i+1] - znodes[i]) for i in 1:node_res-1]
       drnodes = [(rnodes[i+1] - rnodes[i]) for i in 1:node_res-1]
 
-      coil_family[j] = CoilFilament(xs, ys, zs, rs, dxdt, dydt, 
+      coil_family[k] = CoilFilament(xs, ys, zs, rs, dxdt, dydt, 
                                     dzdt, drdt, ds, 
                                     xnodes, ynodes, znodes, rnodes,
                                     xnodes_half, ynodes_half, znodes_half, rnodes_half,
@@ -551,17 +552,19 @@ function generate_mgrid(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
     Az_temp .= 0.0
     Bϕ_temp .= 0.0
     Aϕ_temp .= 0.0
+    count = 0
     for coil in family.coil
+      count += 1
       get_bfield_grid!(coil, Br_temp, Bz_temp, Bϕ_temp,
                        Ar_temp, Az_temp, Aϕ_temp,
                        rrange, zrange, ϕrange)
     end
-    println(collect(rrange))
-    println(collect(zrange))
-    println(collect(ϕrange))
-    println("br, r",Br_temp[1,2,:])
-    println("br, z",Br_temp[1,:,1])
-    println("br, ϕ",Br_temp[:,1,1])
+    #println(collect(rrange))
+    #println(collect(zrange))
+    #println(collect(ϕrange))
   end
+  #println("br, r",Br_temp[1,1,:])
+  #println("br, z",Br_temp[1,:,1])
+  #println("br, ϕ",Br_temp[:,1,1])
 
 end  
