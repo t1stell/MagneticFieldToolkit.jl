@@ -431,17 +431,70 @@ function compute_magnetic_field_exact(coil::CoilFilament{T}, xyz::SVector;
   return SVector(B .* (current * μ0over4π))
 
 end
+#helper function for generate mgrid
+function get_bfield_grid!(coil::CoilFilament{T},
+                         Br::Array{T}, Bz::Array{T}, 
+                         Bϕ::Array{T}, Ar::Array{T},
+                         Az::Array{T}, Aϕ::Array{T},
+                         rrange::StepRangeLen, zrange::StepRangeLen, 
+                         ϕrange::StepRangeLen) where {T}
+  z_res = length(zrange)
+  ϕ_res = length(ϕrange)
 
+  #handle difference in stell symmetry between odd/even phi res
+  if ϕ_res % 2 == 0
+    ϕ_half = div(ϕ_res, 2)
+    ϕodd = false
+  else
+    ϕ_half = div(ϕ_res,2) + 1
+    ϕodd = true
+  end
+
+
+
+  for (ϕ_i) in 1:ϕ_half #only need to do the half period
+    ϕ = ϕrange[ϕ_i]
+    ϕ_is = ϕ_res - ϕ_i + 1 # stell symmetric ϕ 
+    for (z_i,z) in enumerate(zrange)
+      z_is = z_res - z_i + 1 # stell symmetric z
+      for (r_i, r) in enumerate(rrange)
+        cc = Cylindrical(r, ϕ, z)
+        Bpoint = compute_magnetic_field(coil, cc, current=1.0)
+        Apoint = compute_magnetic_potential(coil, cc, current=1.0)
+        #assign the grid points
+        #use the mgrid convention for ordering
+        Br[ϕ_i, z_i, r_i] += Bpoint[1]
+        Bz[ϕ_i, z_i, r_i] += Bpoint[3]
+        Bϕ[ϕ_i, z_i, r_i] += Bpoint[2]
+        Ar[ϕ_i, z_i, r_i] += Apoint[1]
+        Aϕ[ϕ_i, z_i, r_i] += Apoint[3]
+        Az[ϕ_i, z_i, r_i] += Apoint[2]
+        #don't do stell sym for this surface
+        if ϕodd && ϕ_i == ϕ_half
+          continue
+        end
+        Br[ϕ_is, z_is, r_i] += -Bpoint[1]
+        Bz[ϕ_is, z_is, r_i] += Bpoint[3]
+        Bϕ[ϕ_is, z_is, r_i] += Bpoint[2]
+        Ar[ϕ_is, z_is, r_i] += -Apoint[1]
+        Az[ϕ_is, z_is, r_i] += Apoint[3]
+        Aϕ[ϕ_is, z_is, r_i] += Apoint[2]
+      end
+    end
+  end
+end
 
 """
-  potential_from_coils(cset::Coilset, r_res::Int, z_res::Int)
+  generate_mgrid(cset::Coilset, r_res::Int, z_res::Int, ϕ_res::Int, nfp::Int, savename)
 
 optional arguments, rmin, rmax, zmin, zmax.  If not set, the values used are
 the maximum r and z from the coils
 
+The code assumes stellarator symmetry
+
 """
-function potential_from_coils(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
-                               nfp::Int64;
+function generate_mgrid(cset::CoilSet{T}, r_res::Int64, z_res::Int64, 
+          ϕ_res::Int64,  nfp::Int64, savename;
                   rmin=nothing, rmax=nothing, zmin=nothing, zmax=nothing
                   ) where {T}
   if rmax == nothing                
@@ -457,8 +510,46 @@ function potential_from_coils(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
     zmin = extreme_coils(cset, :z, vmin = true)
   end
 
-  #calculate the potential here
+  if zmax != -1 * zmin
+    #stell symmetry won't work if zmin and zmax aren't the same
+    zmin = -1*zmax
+  end
+
+  Br_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
+  Bz_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
+  Bϕ_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
+  Ar_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
+  Az_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
+  Aϕ_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
+
+  #calculate the ranges
+  rrange = range(rmin, rmax, r_res)
+  zrange = range(zmin, zmax, z_res)
+  #note mgrids do not include the last ϕ value because it should
+  #be the same, we could do the same thing if we wanted
+  ϕrange = range(0, 2*π/nfp, ϕ_res)
+  
+  
+  # we need to compute for each family
+  for (family_idx, family) in enumerate(cset.family)
+    #set everything to 0
+    Br_temp .= 0.0
+    Ar_temp .= 0.0
+    Bz_temp .= 0.0
+    Az_temp .= 0.0
+    Bϕ_temp .= 0.0
+    Aϕ_temp .= 0.0
+    for coil in family.coil
+      get_bfield_grid!(coil, Br_temp, Bz_temp, Bϕ_temp,
+                       Ar_temp, Az_temp, Aϕ_temp,
+                       rrange, zrange, ϕrange)
+    end
+    println(collect(rrange))
+    println(collect(zrange))
+    println(collect(ϕrange))
+    println("br, r",Br_temp[1,2,:])
+    println("br, z",Br_temp[1,:,1])
+    println("br, ϕ",Br_temp[:,1,1])
+  end
+
 end  
-
-
-
