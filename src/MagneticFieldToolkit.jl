@@ -17,7 +17,7 @@ export read_mgrid, read_bmw, read_vmec_coils
 
 # Field calculations
 export compute_magnetic_potential, compute_magnetic_field
-
+export generate_mgrid
 
 include("bfieldUtils.jl")
 include("ReadMagneticField.jl")

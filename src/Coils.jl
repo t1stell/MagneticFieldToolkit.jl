@@ -606,6 +606,32 @@ function generate_mgrid(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
   end
 
   return mgrid 
-
-
 end  
+
+
+"""
+  functions to call the multiple magnetic field
+"""
+function (multi_magnetic_field::MultipleFieldGrid)(r::T, θ::T, z::T, currents::Vector{T}) where {T}
+  nfields = length(multi_magnetic_field.magnetic_field)
+  if nfields != length(currents)
+    println("Error: no. of currents, ",length(currents)," does not match no. of fields, ",nfields)
+    return ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
+  end
+  Br = 0.0
+  Bz = 0.0
+  Bθ = 0.0
+  Ar = 0.0
+  Az = 0.0
+  Aθ = 0.0
+  for (i, mg) in enumerate(multi_magnetic_field.magnetic_field)
+    ((Brt, Bθt, Bzt), (Art, Aθt, Azt)) = mg(r, θ, z, A=true)
+    Br += Brt * currents[i]
+    Bz += Bzt * currents[i]
+    Bθ += Bθt * currents[i]
+    Ar += Art * currents[i]
+    Az += Azt * currents[i]
+    Aθ += Aθt * currents[i]
+  end
+  return (Br, Bθ, Bz), (Ar, Aθ, Az)
+end
