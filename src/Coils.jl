@@ -1,5 +1,31 @@
 const μ0over4π = 1.25663706E-6/4/π
 
+
+#this is an mgrid that allows for multiple values of the field
+#so currents can be adjusted independently
+struct MultipleFieldGrid <: AbstractMagneticField
+  magnetic_field::Vector{MagneticField}
+end
+
+#constructor to generate a field grid
+function MultipleFieldGrid(r::StepRangeLen, θ::StepRangeLen, 
+                           z::StepRangeLen, nfp::Int, nfamilies::Int) 
+  dummy = zeros(length(r), length(θ), length(z))
+
+  #construct the coords
+  fullSize = (length(r), length(θ), length(z))
+  r_grid = reshape(repeat(r,outer=length(z)*length(θ)),fullSize)
+  θ_grid = reshape(repeat(θ,inner=length(r),outer=length(z)),fullSize)
+  z_grid = reshape(repeat(z,inner=length(r)*length(θ)),fullSize)
+  field_coords = StructArray{Cylindrical}((r_grid, θ_grid, z_grid))
+
+  
+  gridarray = fill(MagneticField(field_coords, copy(dummy), copy(dummy), copy(dummy),
+                            copy(dummy), copy(dummy), copy(dummy), nfp=nfp), nfamilies)
+
+  return MultipleFieldGrid(gridarray)
+end
+
 struct CoilFilament{FT}
   x::Interpolations.Extrapolation
   y::Interpolations.Extrapolation
@@ -444,6 +470,8 @@ function compute_magnetic_field_exact(coil::CoilFilament{T}, xyz::SVector;
   return SVector(B .* (current * μ0over4π))
 
 end
+
+
 #helper function for generate mgrid
 function get_bfield_grid!(coil::CoilFilament{T},
                          Br::Array{T}, Bz::Array{T}, 
@@ -476,22 +504,22 @@ function get_bfield_grid!(coil::CoilFilament{T},
         Apoint = compute_magnetic_potential(coil, cc, current=1.0)
         #assign the grid points
         #use the mgrid convention for ordering
-        Br[ϕ_i, z_i, r_i] += Bpoint[1]
-        Bz[ϕ_i, z_i, r_i] += Bpoint[3]
-        Bϕ[ϕ_i, z_i, r_i] += Bpoint[2]
-        Ar[ϕ_i, z_i, r_i] += Apoint[1]
-        Aϕ[ϕ_i, z_i, r_i] += Apoint[3]
-        Az[ϕ_i, z_i, r_i] += Apoint[2]
+        Br[r_i, ϕ_i, z_i] += Bpoint[1]
+        Bz[r_i, ϕ_i, z_i] += Bpoint[3]
+        Bϕ[r_i, ϕ_i, z_i] += Bpoint[2]
+        Ar[r_i, ϕ_i, z_i] += Apoint[1]
+        Aϕ[r_i, ϕ_i, z_i] += Apoint[3]
+        Az[r_i, ϕ_i, z_i] += Apoint[2]
         #don't do stell sym for this surface
         if ϕodd && ϕ_i == ϕ_half
           continue
         end
-        Br[ϕ_is, z_is, r_i] += -Bpoint[1]
-        Bz[ϕ_is, z_is, r_i] += Bpoint[3]
-        Bϕ[ϕ_is, z_is, r_i] += Bpoint[2]
-        Ar[ϕ_is, z_is, r_i] += -Apoint[1]
-        Az[ϕ_is, z_is, r_i] += Apoint[3]
-        Aϕ[ϕ_is, z_is, r_i] += Apoint[2]
+        Br[r_i, ϕ_is, z_is] += -Bpoint[1]
+        Bz[r_i, ϕ_is, z_is] += Bpoint[3]
+        Bϕ[r_i, ϕ_is, z_is] += Bpoint[2]
+        Ar[r_i, ϕ_is, z_is] += -Apoint[1]
+        Az[r_i, ϕ_is, z_is] += Apoint[3]
+        Aϕ[r_i, ϕ_is, z_is] += Apoint[2]
       end
     end
   end
@@ -528,12 +556,12 @@ function generate_mgrid(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
     zmin = -1*zmax
   end
 
-  Br_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
-  Bz_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
-  Bϕ_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
-  Ar_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
-  Az_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
-  Aϕ_temp = Array{Float64}(undef, ϕ_res, z_res, r_res)  
+  Br_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
+  Bz_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
+  Bϕ_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
+  Ar_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
+  Az_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
+  Aϕ_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
 
   #calculate the ranges
   rrange = range(rmin, rmax, r_res)
@@ -541,7 +569,17 @@ function generate_mgrid(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
   #note mgrids do not include the last ϕ value because it should
   #be the same, we could do the same thing if we wanted
   ϕrange = range(0, 2*π/nfp, ϕ_res)
-  
+
+  #Initialize a magnetic field grid
+  mgrid = MultipleFieldGrid(rrange, ϕrange, zrange, nfp, length(cset.family))
+  #generate coords
+  fullSize = (length(rrange), length(ϕrange), length(zrange))
+  r_grid = reshape(repeat(rrange,outer=length(zrange)*length(ϕrange)),fullSize)
+  θ_grid = reshape(repeat(ϕrange,inner=length(rrange),outer=length(zrange)),fullSize)
+  z_grid = reshape(repeat(zrange,inner=length(rrange)*length(ϕrange)),fullSize)
+  field_coords = StructArray{Cylindrical}((r_grid, θ_grid, z_grid))
+
+
   
   # we need to compute for each family
   for (family_idx, family) in enumerate(cset.family)
@@ -558,13 +596,16 @@ function generate_mgrid(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
       get_bfield_grid!(coil, Br_temp, Bz_temp, Bϕ_temp,
                        Ar_temp, Az_temp, Aϕ_temp,
                        rrange, zrange, ϕrange)
+      #generate a magnetic field object
+      mf = MagneticField(field_coords, Br_temp, Bϕ_temp, Bz_temp, Ar_temp, Aϕ_temp, Az_temp, 
+                         nfp = nfp)
+      #load it into the array
+      mgrid.magnetic_field[family_idx] = mf
     end
-    #println(collect(rrange))
-    #println(collect(zrange))
-    #println(collect(ϕrange))
+
   end
-  #println("br, r",Br_temp[1,1,:])
-  #println("br, z",Br_temp[1,:,1])
-  #println("br, ϕ",Br_temp[:,1,1])
+
+  return mgrid 
+
 
 end  
