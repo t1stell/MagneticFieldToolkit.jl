@@ -13,7 +13,7 @@ using PlasmaEquilibriumToolkit
 
 
 # File load 
-export read_mgrid, read_bmw, read_vmec_coils
+export read_mgrid, read_bmw, read_vmec_coils, read_mgrid_h5
 
 # Field calculations
 export compute_magnetic_potential, compute_magnetic_field
