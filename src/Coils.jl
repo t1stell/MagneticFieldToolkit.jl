@@ -550,7 +550,7 @@ function generate_mgrid(cset::CoilSet{T}, r_res::Int64, θ_res::Int64,
     zmax = extreme_coils(cset, :z, vmax = true)
   end
   if zmin == nothing
-    zmin = extreme_coils(cset, :z, vmin = true)
+    zmin = extreme_coils(cset, :z, vmax = false)
   end
 
   if zmax != -1 * zmin
