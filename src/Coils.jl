@@ -534,8 +534,8 @@ the maximum r and z from the coils
 The code assumes stellarator symmetry
 
 """
-function generate_mgrid(cset::CoilSet{T}, r_res::Int64, z_res::Int64, 
-          ϕ_res::Int64,  nfp::Int64, savename;
+function generate_mgrid(cset::CoilSet{T}, r_res::Int64, θ_res::Int64, 
+          z_res::Int64,  nfp::Int64, savename;
                   rmin=nothing, rmax=nothing, zmin=nothing, zmax=nothing
                   ) where {T}
   if rmax == nothing                
@@ -556,27 +556,27 @@ function generate_mgrid(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
     zmin = -1*zmax
   end
 
-  Br_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
-  Bz_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
-  Bϕ_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
-  Ar_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
-  Az_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
-  Aϕ_temp = Array{Float64}(undef, r_res, ϕ_res, z_res)  
+  Br_temp = Array{Float64}(undef, r_res, θ_res, z_res)  
+  Bz_temp = Array{Float64}(undef, r_res, θ_res, z_res)  
+  Bθ_temp = Array{Float64}(undef, r_res, θ_res, z_res)  
+  Ar_temp = Array{Float64}(undef, r_res, θ_res, z_res)  
+  Az_temp = Array{Float64}(undef, r_res, θ_res, z_res)  
+  Aθ_temp = Array{Float64}(undef, r_res, θ_res, z_res)  
 
   #calculate the ranges
   rrange = range(rmin, rmax, r_res)
   zrange = range(zmin, zmax, z_res)
   #note mgrids do not include the last ϕ value because it should
   #be the same, we could do the same thing if we wanted
-  ϕrange = range(0, 2*π/nfp, ϕ_res)
+  θrange = range(0, 2*π/nfp, θ_res)
 
   #Initialize a magnetic field grid
-  mgrid = MultipleFieldGrid(rrange, ϕrange, zrange, nfp, length(cset.family))
+  mgrid = MultipleFieldGrid(rrange, θrange, zrange, nfp, length(cset.family))
   #generate coords
-  fullSize = (length(rrange), length(ϕrange), length(zrange))
-  r_grid = reshape(repeat(rrange,outer=length(zrange)*length(ϕrange)),fullSize)
-  θ_grid = reshape(repeat(ϕrange,inner=length(rrange),outer=length(zrange)),fullSize)
-  z_grid = reshape(repeat(zrange,inner=length(rrange)*length(ϕrange)),fullSize)
+  fullSize = (length(rrange), length(θrange), length(zrange))
+  r_grid = reshape(repeat(rrange,outer=length(zrange)*length(θrange)),fullSize)
+  θ_grid = reshape(repeat(θrange,inner=length(rrange),outer=length(zrange)),fullSize)
+  z_grid = reshape(repeat(zrange,inner=length(rrange)*length(θrange)),fullSize)
   field_coords = StructArray{Cylindrical}((r_grid, θ_grid, z_grid))
 
 
@@ -588,16 +588,16 @@ function generate_mgrid(cset::CoilSet{T}, r_res::Int64, z_res::Int64,
     Ar_temp .= 0.0
     Bz_temp .= 0.0
     Az_temp .= 0.0
-    Bϕ_temp .= 0.0
-    Aϕ_temp .= 0.0
+    Bθ_temp .= 0.0
+    Aθ_temp .= 0.0
     count = 0
     for coil in family.coil
       count += 1
-      get_bfield_grid!(coil, Br_temp, Bz_temp, Bϕ_temp,
-                       Ar_temp, Az_temp, Aϕ_temp,
-                       rrange, zrange, ϕrange)
+      get_bfield_grid!(coil, Br_temp, Bz_temp, Bθ_temp,
+                       Ar_temp, Az_temp, Aθ_temp,
+                       rrange, zrange, θrange)
       #generate a magnetic field object
-      mf = MagneticField(field_coords, Br_temp, Bϕ_temp, Bz_temp, Ar_temp, Aϕ_temp, Az_temp, 
+      mf = MagneticField(field_coords, Br_temp, Bθ_temp, Bz_temp, Ar_temp, Aθ_temp, Az_temp, 
                          nfp = nfp)
       #load it into the array
       mgrid.magnetic_field[family_idx] = mf
