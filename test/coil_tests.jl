@@ -98,17 +98,46 @@
   #create an mgrid from the single coil set, note this is note enough resolution
   #for an accurate answer.  more
   mg1coil = generate_mgrid(cs1coil, 20, 30, 20, 1)
+  (bt, at) = mg1coil(10.2, 0.2, 0.2, [1.0E7])
   @testset "create mgrid from single coil" begin
     (b, a) = mg1coil(10.0, 0.0, 0.0, [1.0])
     @test abs(b[1]) < 1.0E-20  
     @test abs(b[3]) < 1.0E-20  
     @test abs(b[2]) < 6.4E-7 && abs(b[2]) > 6.2E-7 #converges to 2πE-7 at higher res
   end
-  #test saving a file
-  #@testset "writing an mgrid h5 file" begin
-    
+  #test saving and reading a file
+  savename = joinpath(@__DIR__, "single_coil_mgrid.h5")
+  MagneticFieldToolkit.save_mgrid(mg1coil, savename)  
+  @testset "writing/reading an mgrid h5 file" begin
+    mgh5 = read_mgrid_h5(savename)
+    (b, a) = mgh5(10.0, 0.0, 0.0, [1.0])
+    println("h5: b ",b)
+    println("h5: a ",a)
 
-  #end        
+    @test abs(b[1]) < 1.0E-20  
+    @test abs(b[3]) < 1.0E-20  
+    @test abs(b[2]) < 6.4E-7 && abs(b[2]) > 6.2E-7 #converges to 2πE-7 at higher res
+    (bt2, at2) = mgh5(10.2, 0.2, 0.2, [1.0e7])
+    @test isapprox(bt[1], bt2[1], rtol=rtol_lo)
+    @test isapprox(bt[2], bt2[2], rtol=rtol_lo)
+    @test isapprox(bt[3], bt2[3], rtol=rtol_lo)
+    @test isapprox(at[1], at2[1], rtol=rtol_lo)
+    @test isapprox(at[2], at2[2], rtol=rtol_lo)
+    @test isapprox(at[3], at2[3], rtol=rtol_lo)
+    
+    #test the other way of loading
+    mgh5 = read_mgrid_h5(savename, currents=[1.0e7])
+    (bt2, at2) = mgh5(10.2, 0.2, 0.2, A=true)
+    @test isapprox(bt[1], bt2[1], rtol=rtol_lo)
+    @test isapprox(bt[2], bt2[2], rtol=rtol_lo)
+    @test isapprox(bt[3], bt2[3], rtol=rtol_lo)
+    @test isapprox(at[1], at2[1], rtol=rtol_lo)
+    @test isapprox(at[2], at2[2], rtol=rtol_lo)
+    @test isapprox(at[3], at2[3], rtol=rtol_lo)
+
+
+  end 
+  rm(savename)
 
 end
 

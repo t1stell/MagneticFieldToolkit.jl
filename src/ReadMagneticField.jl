@@ -287,6 +287,8 @@ function read_mgrid_h5(filename::AbstractString; currents=nothing)
       mgrid.magnetic_field[i] = mf
     end
   end
+  close(file_id)
+
   if currents != nothing
     return MagneticField(field_coords, Br, Bθ, Bz, Ar, Aθ, Az)
   else
