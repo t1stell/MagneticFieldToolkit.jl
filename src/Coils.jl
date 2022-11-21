@@ -1,3 +1,4 @@
+using HDF5
 const μ0over4π = 1.25663706E-6/4/π
 
 
@@ -535,7 +536,8 @@ The code assumes stellarator symmetry
 
 """
 function generate_mgrid(cset::CoilSet{T}, r_res::Int64, θ_res::Int64, 
-          z_res::Int64,  nfp::Int64, savename;
+          z_res::Int64,  nfp::Int64; 
+                  savename = nothing,
                   rmin=nothing, rmax=nothing, zmin=nothing, zmax=nothing
                   ) where {T}
   if rmax == nothing                
@@ -602,12 +604,67 @@ function generate_mgrid(cset::CoilSet{T}, r_res::Int64, θ_res::Int64,
       #load it into the array
       mgrid.magnetic_field[family_idx] = mf
     end
-
+  end
+  if savename != nothing
+    println("saving the grid, this may take a few minutes")
+    save_mgrid(mgrid, savename)
   end
 
   return mgrid 
 end  
 
+function save_mgrid(mgrid::MultipleFieldGrid, savename::String)
+  
+  fid = h5open(savename, "w")
+  k = knots(mgrid.magnetic_field[1].field_data[1].itp)
+  r = k.iterators[1].knots
+  θ = k.iterators[2].knots
+  z = k.iterators[3].knots
+  mgsize = size(k)
+  ftemp = Array{Float64}(undef, mgsize) #temporary data to store values
+  gname = "axes"
+  create_group(fid, gname)
+  gid = fid[gname]
+  write(gid,"r",r)
+  write(gid,"theta",θ)
+  write(gid,"z",z)
+  write(gid,"nfp",mgrid.magnetic_field[1].nfp)
+  
+  #field arrays
+  bnames = ("Br","Btheta","Bz")
+  anames = ("Ar","Atheta","Az")
+
+  for ifield in 1:length(mgrid.magnetic_field) #for each field
+    gname = "coil"*string(ifield)
+    create_group(fid, gname)
+    gid = fid[gname]
+    #construct the array for magnetic field
+    for itype in 1:3
+      for ir in 1:mgsize[1]
+        for iθ in 1:mgsize[2]
+          for iz in 1:mgsize[3]
+            ftemp[ir, iθ, iz] = mgrid.magnetic_field[ifield].field_data[itype].itp[ir, iθ, iz]
+          end
+        end
+      end
+      write(gid,bnames[itype],ftemp)
+    end
+    #now do the same for the potential
+    for itype in 1:3
+      for ir in 1:mgsize[1]
+        for iθ in 1:mgsize[2]
+          for iz in 1:mgsize[3]
+            ftemp[ir, iθ, iz] = mgrid.magnetic_field[ifield].potential_data[itype].itp[ir, iθ, iz]
+          end
+        end
+      end
+      write(gid,anames[itype],ftemp)
+    end
+  end
+  close(fid)
+end   
+
+   
 
 """
   functions to call the multiple magnetic field
