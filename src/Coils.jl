@@ -139,7 +139,7 @@ function read_vmec_coils(filename::String; use_current = false, node_res = 1025)
         push!(yc, parse(Float64, dum[2]))
         push!(zc, parse(Float64, dum[3]))
         tempcurrent = parse(Float64, dum[4])
-        if j == end_index-1 && tempcurrent > 0 
+        if j == end_index-1 && tempcurrent < 0 
           shouldflip = true
         end
         if j == end_index-1 && use_current
