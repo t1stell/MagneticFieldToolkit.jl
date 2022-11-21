@@ -95,5 +95,20 @@
           SVector(0.0,  0.0,  -1.0815561E-6), rtol = rtol_lo)
   end
 
+  #create an mgrid from the single coil set, note this is note enough resolution
+  #for an accurate answer.  more
+  mg1coil = generate_mgrid(cs1coil, 20, 30, 20, 1)
+  @testset "create mgrid from single coil" begin
+    (b, a) = mg1coil(10.0, 0.0, 0.0, [1.0])
+    @test abs(b[1]) < 1.0E-20  
+    @test abs(b[3]) < 1.0E-20  
+    @test abs(b[2]) < 6.4E-7 && abs(b[2]) > 6.2E-7 #converges to 2πE-7 at higher res
+  end
+  #test saving a file
+  #@testset "writing an mgrid h5 file" begin
+    
+
+  #end        
+
 end
 
