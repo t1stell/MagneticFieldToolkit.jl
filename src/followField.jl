@@ -67,31 +67,21 @@ function follow_field_s(itp::MagneticField{T},
                             solve(prob, Tsit5(), saveat = s_step)
 end
 
-function field_deriv_ϕ!(du::Vector{Float64},
-                          u::Vector{Float64},
-                          itp::MagneticField,
-                          ϕ::Float64;
-                         )
-    r = u[1]
-    z = u[2]
-    br, bϕ, bz = itp(r, ϕ, z)
-    du[1] = r * br/bϕ
-    du[2] = r * bz/bϕ
+
+#This version gets called from the main follow field
+#it picks out the interpolator type via the field_info field
+#and passes to the correct field_deriv_ϕ function below
+function field_deriv_ϕ(u::AbstractVector{T},
+                         p::InterpolationParameters{T},
+                         ϕ::T;
+                        ) where {T}
+    if p.r_min < u[1] < p.r_max && p.z_min < u[2] < p.z_max
+        return field_deriv_ϕ(u, p.field_info, ϕ)
+    else
+        return u
+    end
 end
 
-function field_deriv_ϕ!(du::Vector{Float64},
-                         u::Vector{Float64},
-                         cset::CoilSet{T},
-                         ϕ::Float64;
-                        ) where{T}
-    
-    r = u[1]
-    z = u[2]
-    cc = Cylindrical(r, ϕ, z)
-    (br, bϕ, bz) = compute_magnetic_field(cset, cc)
-    du[1] = r * br/bϕ
-    du[2] = r * bz/bϕ
-end
 
 function field_deriv_ϕ(u::AbstractVector,
                          itp::MagneticField{T},
@@ -117,23 +107,6 @@ function field_deriv_ϕ( u::AbstractVector,
     dz = r * bz/bϕ
     return SVector{2,T}(dr, dz)
 end
-"""
-"""
-function field_deriv_ϕ(u::AbstractVector{T},
-                         p::InterpolationParameters{T},
-                         ϕ::T;
-                        ) where {T}
-    #ϕ = mod(ϕ, p.ϕ_max)
-    if p.r_min < u[1] < p.r_max && p.z_min < u[2] < p.z_max
-        #p.values .= p.itp(u[1], ϕ, u[2])
-        #bϕ = u[1] / p.values[2]
-        #return SVector{2,T}(bϕ * p.values[1], bϕ * p.values[3])
-        return field_deriv_ϕ(u, p.field_info, ϕ)
-    else
-        return u
-    end
-end
-
 
 #integration with respect to arclength
 function field_deriv_s(u::AbstractVector,
