@@ -54,20 +54,6 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
 
 end
 
-function follow_field_s(itp::MagneticField{T},
-                      rϕz::Array{Float64},
-                      s_end::Float64;
-                      s_step::Float64=zero(T),
-                      ) where{T}
-    u = @SVector [rϕz[1], rϕz[2], rϕz[3]]
-    s_span = (0, s_end)
-    params = InterpolationParameters(itp, zeros(T,3), 2π/itp.nfp)
-    prob = ODEProblem(field_deriv_s, u, s_span, params)
-    abs(s_step) > zero(T) ? solve(prob, Tsit5(), dtmax = s_step, saveat = s_step) :
-                            solve(prob, Tsit5(), saveat = s_step)
-end
-
-
 #This version gets called from the main follow field
 #it picks out the interpolator type via the field_info field
 #and passes to the correct field_deriv_ϕ function below
@@ -108,18 +94,44 @@ function field_deriv_ϕ( u::AbstractVector,
     return SVector{2,T}(dr, dz)
 end
 
+#todo: fix this. right now it doesn't seem to know how far to follow
+function follow_field_s(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
+                      rϕz::Array{Float64},
+                      s_end::Float64;
+                      s_step::Float64=zero(T),
+                      ) where{T}
+    u = @SVector [rϕz[1], rϕz[2], rϕz[3]]
+    s_span = (0, s_end)
+    params = InterpolationParameters(fieldinfo)
+    prob = ODEProblem(field_deriv_s, u, s_span, params)
+    saveat = []
+    abs(s_step) > zero(T) ? solve(prob, Tsit5(), dtmax = s_step, saveat = saveat) :
+                            solve(prob, Tsit5(), saveat = saveat)
+end
+
+#Check bounds and then call the correct derivative function
+function field_deriv_s(u::AbstractVector{T},
+                         p::InterpolationParameters{T},
+                         s::T;
+                        ) where {T}
+    if p.r_min < u[1] < p.r_max && p.z_min < u[2] < p.z_max
+        return field_deriv_s(u, p.field_info, s)
+    else
+        return u
+    end
+end
+
 #integration with respect to arclength
 function field_deriv_s(u::AbstractVector,
-                       p::InterpolationParameters{T},
+                       itp::MagneticField{T},
                        s::Float64;) where {T}
-    ϕ = mod(u[3], p.ϕ_max)
-    map!(i->getfield(p.itp, i)(u[1], ϕ, u[2]), p.values, 1:3)
-    bmagsq = sum(p.values.^2)
-    dr = p.values[1]/bmagsq
-    dz = p.values[2]/bmagsq
-    dϕ = (p.values[3]/u[1])/bmagsq
-    SVector{3, T}(dr, dϕ, dz)
-
+    ϕ = mod(u[2], 2π/itp.nfp)
+    br, bϕ, bz = itp(u[1], ϕ, u[3])
+    bmagsq = br^2 + bϕ^2 + bz^2
+    dr = br/bmagsq
+    dz = bz/bmagsq
+    dϕ = (bϕ/u[1])/bmagsq
+    return SVector{3, T}(dr, dϕ, dz)
 end
 
 function poincare(itp::MagneticField,
