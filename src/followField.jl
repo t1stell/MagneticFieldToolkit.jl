@@ -98,9 +98,9 @@ end
 
 
 #integration with respect to arclength
-function field_deriv_s(u::AbstractVector,
+function field_deriv_s(u::AbstractVector{T},
                        p::InterpolationParameters{T},
-                       s::Float64;) where {T}
+                       s::T;) where {T}
     ϕ = mod(u[3], p.ϕ_max)
     map!(i->getfield(p.itp, i)(u[1], ϕ, u[2]), p.values, 1:3)
     bmagsq = sum(p.values.^2)
@@ -151,6 +151,7 @@ function poincare(itp::MagneticField,
                   ϕ_step::T=zero(T),
                   maxiters::Int = 10^5,
                  ) where {T}
+    itp = BFieldInterpolator(bfield)
     full_size = (length(r₀),length(z₀))
     r_grid = reshape(repeat(r₀, inner= length(z₀)), full_size)
     z_grid = reshape(repeat(z₀, outer= length(r₀)), full_size)
