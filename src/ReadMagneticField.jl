@@ -52,23 +52,49 @@ function read_bmw(filename::AbstractString;
     
     r = range(rmin, rmax, nr)
     z = range(zmin, zmax, nz)
-    θ = range(0, 2*π/nfp, nθ)
+    θ = range(0, 2*π/nfp, nθ+1)
 
-    fullSize = (length(r), length(z), length(θ))
+    fullSize = (length(r), length(θ), length(z))
     r_grid = reshape(repeat(r,outer=length(z)*length(θ)),fullSize)
-    z_grid = reshape(repeat(z,inner=length(r),outer=length(θ)),fullSize)
-    θ_grid = reshape(repeat(θ,inner=length(z)*length(r)),fullSize)
-    field_coords = StructArray{Cylindrical}((r_grid, z_grid, θ_grid))
+    θ_grid = reshape(repeat(θ,inner=length(r),outer=length(z)),fullSize)
+    z_grid = reshape(repeat(z,inner=length(r)*length(θ)),fullSize)
+    field_coords = StructArray{Cylindrical}((r_grid, θ_grid, z_grid))
 
-    Br = NetCDF.readvar(bmw_vars["br_grid"])
-    Bz = NetCDF.readvar(bmw_vars["bz_grid"])
-    Bθ = NetCDF.readvar(bmw_vars["bp_grid"])
-
-    Ar = NetCDF.readvar(bmw_vars["ar_grid"])
-    Az = NetCDF.readvar(bmw_vars["az_grid"])
-    Aθ = NetCDF.readvar(bmw_vars["ap_grid"])
+    Br = permutedims(NetCDF.readvar(bmw_vars["br_grid"]),[1,3,2])
+    Bz = permutedims(NetCDF.readvar(bmw_vars["bz_grid"]),[1,3,2])
+    Bθ = permutedims(NetCDF.readvar(bmw_vars["bp_grid"]),[1,3,2])
     
-    return MagneticField(field_coords, Br, Bz, Bθ, Ar, Az, Aθ, nfp=nfp)
+    Brf = zeros(nr, nθ+1, nz)
+    Bzf = zeros(nr, nθ+1, nz)
+    Bθf = zeros(nr, nθ+1, nz)
+
+    Brf[:,1:end-1,:] = Br[:,:,:]
+    Bzf[:,1:end-1,:] = Bz[:,:,:]
+    Bθf[:,1:end-1,:] = Bθ[:,:,:]
+    
+    Brf[:,end,:] = Br[:,1,:]
+    Bzf[:,end,:] = Bz[:,1,:]
+    Bθf[:,end,:] = Bθ[:,1,:]
+
+
+    Ar = permutedims(NetCDF.readvar(bmw_vars["ar_grid"]),[1,3,2])
+    Az = permutedims(NetCDF.readvar(bmw_vars["az_grid"]),[1,3,2])
+    Aθ = permutedims(NetCDF.readvar(bmw_vars["ap_grid"]),[1,3,2])
+    
+    Arf = zeros(nr, nθ+1, nz)
+    Azf = zeros(nr, nθ+1, nz)
+    Aθf = zeros(nr, nθ+1, nz)
+
+    Arf[:,1:end-1,:] = Ar[:,:,:]
+    Azf[:,1:end-1,:] = Az[:,:,:]
+    Aθf[:,1:end-1,:] = Aθ[:,:,:]
+    
+    Arf[:,end,:] = Ar[:,1,:]
+    Azf[:,end,:] = Az[:,1,:]
+    Aθf[:,end,:] = Aθ[:,1,:]
+
+    
+    return MagneticField(field_coords, Brf, Bθf, Bzf, Arf, Aθf, Azf, nfp=nfp)
 
 end
 
@@ -106,30 +132,42 @@ function read_mgrid(filename::AbstractString,
     
     r = range(rmin, rmax, nr)
     z = range(zmin, zmax, nz)
-    θ = range(0, 2*π/nfp, nθ)
+    #Δθ = (2*π/nfp)/(nθ + 1)
+    θ = range(0, 2*π/nfp, nθ+1)
 
-    fullSize = (length(r), length(z), length(θ))
+    fullSize = (length(r), length(θ), length(z))
     r_grid = reshape(repeat(r,outer=length(z)*length(θ)),fullSize)
-    z_grid = reshape(repeat(z,inner=length(r),outer=length(θ)),fullSize)
-    θ_grid = reshape(repeat(θ,inner=length(z)*length(r)),fullSize)
-    field_coords = StructArray{Cylindrical}((r_grid, z_grid, θ_grid))
+    θ_grid = reshape(repeat(θ,inner=length(r),outer=length(z)),fullSize)
+    z_grid = reshape(repeat(z,inner=length(r)*length(θ)),fullSize)
+    field_coords = StructArray{Cylindrical}((r_grid, θ_grid, z_grid))
 
-    Br = NetCDF.readvar(mgrid_vars["br_001"]).*current[1]
-    Bz = NetCDF.readvar(mgrid_vars["bz_001"]).*current[1]
-    Bθ = NetCDF.readvar(mgrid_vars["bp_001"]).*current[1]
+    Br = permutedims(NetCDF.readvar(mgrid_vars["br_001"]).*current[1],[1,3,2])
+    Bz = permutedims(NetCDF.readvar(mgrid_vars["bz_001"]).*current[1],[1,3,2])
+    Bθ = permutedims(NetCDF.readvar(mgrid_vars["bp_001"]).*current[1],[1,3,2])
 
     for i in 2:external_coils
         if i > length(current)
             continue
         end
         numeral = lpad(i,3,'0')
-        Br += NetCDF.readvar(mgrid_vars["br_"*numeral]).*current[i]
-        Bz += NetCDF.readvar(mgrid_vars["bz_"*numeral]).*current[i]
-        Bθ += NetCDF.readvar(mgrid_vars["bp_"*numeral]).*current[i]
+        Br += permutedims(NetCDF.readvar(mgrid_vars["br_"*numeral]).*current[i],[1,3,2])
+        Bz += permutedims(NetCDF.readvar(mgrid_vars["bz_"*numeral]).*current[i],[1,3,2])
+        Bθ += permutedims(NetCDF.readvar(mgrid_vars["bp_"*numeral]).*current[i],[1,3,2])
     end
 
+    Brf = zeros(nr, nθ+1, nz)
+    Bzf = zeros(nr, nθ+1, nz)
+    Bθf = zeros(nr, nθ+1, nz)
 
-    return MagneticField(field_coords, Br, Bz, Bθ, nfp=nfp)
+    Brf[:,1:end-1,:] = Br[:,:,:]
+    Bzf[:,1:end-1,:] = Bz[:,:,:]
+    Bθf[:,1:end-1,:] = Bθ[:,:,:]
+    
+    Brf[:,end,:] = Br[:,1,:]
+    Bzf[:,end,:] = Bz[:,1,:]
+    Bθf[:,end,:] = Bθ[:,1,:]
+
+    return MagneticField(field_coords, Brf, Bθf, Bzf, nfp=nfp)
 
 end
 

@@ -1,4 +1,8 @@
 using MagneticFieldToolkit
+using StaticArrays
+using CoordinateTransformations
 using Test
 
-include("file_load_tests.jl")
+@testset "MagneticFieldToolkit.jl" begin
+  include("coil_tests.jl")
+end

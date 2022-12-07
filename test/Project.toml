@@ -1,3 +1,5 @@
 [deps]
+CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
 MagneticFieldToolkit = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
