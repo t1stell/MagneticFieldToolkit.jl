@@ -174,6 +174,7 @@ function poincare(itp::MagneticField,
                   ϕ_step::T=zero(T),
                   maxiters::Int = 10^5,
                  ) where {T}
+    itp = BFieldInterpolator(bfield)
     full_size = (length(r₀),length(z₀))
     r_grid = reshape(repeat(r₀, inner= length(z₀)), full_size)
     z_grid = reshape(repeat(z₀, outer= length(r₀)), full_size)
