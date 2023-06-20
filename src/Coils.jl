@@ -62,7 +62,6 @@ function read_coil_files(filename_list::Vector{String}, nfp::Integer;
   for (file_ix, filename) in enumerate(filename_list)
     lines = readlines(filename)
     npoints = parse(Int64, lines[1])
-    println(npoints)
     xc = Vector{Float64}(undef, npoints)
     yc = Vector{Float64}(undef, npoints)
     zc = Vector{Float64}(undef, npoints)
