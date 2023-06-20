@@ -8,6 +8,11 @@ struct InterpolationParameters{T}
     z_max::T
 end
 
+struct CoilInterpolationParameters{T}
+    cs::CoilSet{T}
+    values::Vector{T}
+end
+
 """
   Constructor for InterpolationParameters Struct
 """
@@ -20,7 +25,16 @@ function InterpolationParameters(itp::MagneticField{T}) where{T}
   z_min = minimum(itp.coords.z)
   return InterpolationParameters{T}(itp, values, ϕ_max, r_min, r_max, z_min, z_max)
 end
-  
+
+function InterpolationParameters(cs::CoilSet{T}) where {T}
+  values = zeros(T, 3)
+  ϕ_max = 2π
+  r_max = extreme_coils(cs, :r)
+  r_min = extreme_coils(cs, :r, vmax=false)
+  z_max = extreme_coils(cs, :z)
+  z_min = extreme_coils(cs, :z, vmax=false)
+  return InterpolationParameters{T}(itp, values, ϕ_max, r_min, r_max, z_min, z_max)
+end  
 
 function follow_field(itp::MagneticField{T},
                       rϕz::Array{Float64},
@@ -43,6 +57,28 @@ function follow_field(itp::MagneticField{T},
                               solve(prob, Tsit5(), saveat = saveat)
 
 end
+
+function follow_field(cs::CoilSet{T},
+                      rϕz::Array{Float64},
+                      ϕ_end::Float64;
+                      ϕ_step::Float64=zero(T),
+                      poincare::Int64=0
+                     ) where {T}
+    ϕ_start = rϕz[2]
+    u = @SVector [rϕz[1], rϕz[3]]
+    ϕ_span = (ϕ_start,ϕ_end)
+    params = CoilInterpolationParameters(cs, zeros(T, 3))
+    prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
+    if poincare != 0
+        N = abs(ϕ_end - ϕ_start)/(2π/poincare)
+        saveat = [i * 2*π/poincare + ϕ_start for i in 1:N]
+    else
+        saveat = []
+    end
+    abs(ϕ_step) > zero(T) ? solve(prob, Tsit5(), dtmax = ϕ_step, saveat = saveat) :
+                              solve(prob, Tsit5(), saveat = saveat)
+end
+
 
 function follow_field_s(itp::MagneticField{T},
                       rϕz::Array{Float64},
@@ -96,7 +132,16 @@ function field_deriv_ϕ(u::AbstractVector{T},
     end
 end
 
-
+function field_deriv_ϕ(u::AbstractVector{T},
+                         p::CoilInterpolationParameters{T},
+                         ϕ::T;
+                        ) where {T}
+     #ϕ = mod(ϕ, p.ϕ_max)
+     p.values .= compute_magnetic_field(p.cs, Cylindrical(u[1], ϕ, u[2]))
+     println(p.values, u, ϕ)
+     bϕ = u[1] / p.values[2]
+     return SVector{2,T}(bϕ * p.values[1], bϕ * p.values[3])
+end
 #integration with respect to arclength
 function field_deriv_s(u::AbstractVector{T},
                        p::InterpolationParameters{T},
