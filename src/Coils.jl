@@ -29,6 +29,65 @@ struct CoilSet{FT}
   family::Array{CoilFamily{FT},1}
 end
 
+function generate_coil_filament(xc::T, yc::T, zc::T, current::F) where {T, F}
+  ts = range(0, 2π, length(xc))
+  rc = sqrt.(xc.^2 + yc.^2)
+  xs = cubic_spline_interpolation(ts, xc)
+  ys = cubic_spline_interpolation(ts, yc)
+  zs = cubic_spline_interpolation(ts, zc)
+  rs = cubic_spline_interpolation(ts, rc)
+
+  #calculate the derivative splines
+  dx = [Interpolations.gradient(xs, t)[1] for t in ts] 
+  dy = [Interpolations.gradient(ys, t)[1] for t in ts]
+  dz = [Interpolations.gradient(zs, t)[1] for t in ts]
+  dr = [Interpolations.gradient(rs, t)[1] for t in ts]
+  ds_mag = sqrt.(dx.^2 .+ dy.^2 .+ dz.^2)
+  dxdt = cubic_spline_interpolation(ts, dx)
+  dydt = cubic_spline_interpolation(ts, dy)
+  dzdt = cubic_spline_interpolation(ts, dz)
+  drdt = cubic_spline_interpolation(ts, dr)
+  ds = cubic_spline_interpolation(ts, ds_mag)
+  return CoilFilament(xs, ys, zs, rs, dxdt, dydt, dzdt, drdt, ds, current)
+end
+
+function read_coil_files(filename_list::Vector{String}, nfp::Integer;
+                         grouping::Vector{Int64}=[1], currents::Vector{Float64}=[1.0])
+  nfamilies = maximum(grouping)
+  nunique = length(filename_list)
+  nfilaments = nunique*nfp
+  coil_set = Vector{CoilFamily{Float64}}(undef, nfamilies)
+  #for now assume just one family
+  coil_family = Vector{CoilFilament{Float64}}(undef, nfilaments)
+  for (file_ix, filename) in enumerate(filename_list)
+    lines = readlines(filename)
+    npoints = parse(Int64, lines[1])
+    println(npoints)
+    xc = Vector{Float64}(undef, npoints)
+    yc = Vector{Float64}(undef, npoints)
+    zc = Vector{Float64}(undef, npoints)
+    for (i, line) in enumerate(lines[2:npoints+1])
+      dum = split(line)
+      xc[i] = parse(Float64, dum[1])
+      yc[i] = parse(Float64, dum[2])
+      zc[i] = parse(Float64, dum[3])
+    end
+    coil_family[file_ix] = generate_coil_filament(xc, yc, zc, currents[1])
+    #now do the rotations
+
+    rc = sqrt.(xc.^2 + yc.^2)
+    θ = atan.(yc, xc)
+    for n in 2:nfp
+      θshift = (2π / nfp) * (n-1)
+      θn = θ .+ θshift
+      xn = rc .* cos.(θn)
+      yn = rc .* sin.(θn)
+      coil_family[file_ix + (nunique * (n-1))] = generate_coil_filament(xn, yn, zc, currents[1])
+    end
+  end
+  return coil_family
+end
+
 """
   read_vmec_coils(filename, use_current=false)
 
@@ -100,33 +159,13 @@ function read_vmec_coils(filename::String; use_current = false)
           current = 1.0 #scaled current
         end
       end
-      #make the splines
-      ts = range(0, 2π, length(xc))
-      rc = sqrt.(xc.^2 + yc.^2)
-      xs = cubic_spline_interpolation(ts, xc)
-      ys = cubic_spline_interpolation(ts, yc)
-      zs = cubic_spline_interpolation(ts, zc)
-      rs = cubic_spline_interpolation(ts, rc)
-
-      #calculate the derivative splines
-      dx = [Interpolations.gradient(xs, t)[1] for t in ts] 
-      dy = [Interpolations.gradient(ys, t)[1] for t in ts]
-      dz = [Interpolations.gradient(zs, t)[1] for t in ts]
-      dr = [Interpolations.gradient(rs, t)[1] for t in ts]
-      ds_mag = sqrt.(dx.^2 .+ dy.^2 .+ dz.^2)
-      dxdt = cubic_spline_interpolation(ts, dx)
-      dydt = cubic_spline_interpolation(ts, dy)
-      dzdt = cubic_spline_interpolation(ts, dz)
-      drdt = cubic_spline_interpolation(ts, dr)
-      ds = cubic_spline_interpolation(ts, ds_mag)
-      coil_family[j] = CoilFilament(xs, ys, zs, rs, dxdt, dydt, 
-                                    dzdt, drdt, ds, current)
+      coil_family[j] = generate_coil_filament(xc, yc, zc, current)
     end
     coil_set[fam_index] = CoilFamily(coil_family, family_names[fam_index])
   end
-  return CoilSet(coil_set)
-  
+  return CoilSet(coil_set) 
 end 
+
 
 #function to get approximate extremes of coils to bound box fields
 function extreme_coils(cset::CoilSet{T}, coord::Symbol; vmax=true) where T
