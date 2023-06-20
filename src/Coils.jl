@@ -84,7 +84,7 @@ function read_coil_files(filename_list::Vector{String}, nfp::Integer;
       coil_family[file_ix + (nunique * (n-1))] = generate_coil_filament(xn, yn, zc, currents[1])
     end
   end
-  return coil_family
+  return CoilSet([CoilFamily(coil_family, "coil")])
 end
 
 """

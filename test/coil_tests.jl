@@ -61,13 +61,13 @@
     fs1 = joinpath(@__DIR__, "sample_coil_1.txt")
     fs2 = joinpath(@__DIR__, "sample_coil_2.txt")
     cs = read_coil_files([fs1, fs2], 5)
-    @test length(cs) == 10
-    @test isapprox(cs[1].x(0), 11.0, rtol=rtol)
-    @test isapprox(cs[2].x(0), 10.947031993394164, rtol=rtol)
-    @test isapprox(cs[3].x(0), 11.0 * cos(2π/5), rtol=rtol)
-    @test isapprox(cs[5].x(0), 11.0 * cos(4π/5), rtol=rtol)
-    @test isapprox(cs[7].x(0), 11.0 * cos(6π/5), rtol=rtol)
-    @test isapprox(cs[9].x(0), 11.0 * cos(8π/5), rtol=rtol)
+    @test length(cs.family[1].coil) == 10
+    @test isapprox(cs.family[1].coil[1].x(0), 11.0, rtol=rtol)
+    @test isapprox(cs.family[1].coil[2].x(0), 10.947031993394164, rtol=rtol)
+    @test isapprox(cs.family[1].coil[3].x(0), 11.0 * cos(2π/5), rtol=rtol)
+    @test isapprox(cs.family[1].coil[5].x(0), 11.0 * cos(4π/5), rtol=rtol)
+    @test isapprox(cs.family[1].coil[7].x(0), 11.0 * cos(6π/5), rtol=rtol)
+    @test isapprox(cs.family[1].coil[9].x(0), 11.0 * cos(8π/5), rtol=rtol)
   end
 end
 
