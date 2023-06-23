@@ -49,7 +49,7 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
     if poincare
         N = abs(ϕ_end - ϕ_start)/(params.ϕ_max)
-        saveat = [i * 2*π/(params,ϕ_max) + ϕ_start for i in 1:N]
+        saveat = [i * 2*π/(params.ϕ_max) + ϕ_start for i in 1:N]
     else
         saveat = []
     end
