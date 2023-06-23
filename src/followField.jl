@@ -39,8 +39,9 @@ end
 function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                       rϕz::Array{Float64},
                       ϕ_end::Float64;
-                      ϕ_step::Float64=zero(T),
-                      poincare::Bool=false
+                      ϕ_step::Float64=π/25,
+                      poincare::Bool=false,
+                      poincare_res::Real=2π
                      ) where {T}
     ϕ_start = rϕz[2]
     u = @SVector [rϕz[1], rϕz[3]]
@@ -48,8 +49,13 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     params = InterpolationParameters(fieldinfo)
     prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
     if poincare
-        N = abs(ϕ_end - ϕ_start)/(params.ϕ_max)
-        saveat = [i * 2*π/(params.ϕ_max) + ϕ_start for i in 1:N]
+        if poincare_res == 2π
+          ϕ_max = params.ϕ_max
+        else
+          ϕ_max = poincare_res
+        end
+        N = abs(ϕ_end - ϕ_start)/(ϕ_max)
+        saveat = [i * (ϕ_max) + ϕ_start for i in 1:N]
     else
         saveat = []
     end
