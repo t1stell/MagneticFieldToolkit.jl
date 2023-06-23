@@ -1,5 +1,5 @@
 struct InterpolationParameters{T}
-    itp::MagneticField{T}
+    field_info::Union{MagneticField{T}, CoilSet{T}}
     values::Vector{T}
     ϕ_max::T
     r_min::T
@@ -26,17 +26,17 @@ function InterpolationParameters(itp::MagneticField{T}) where{T}
   return InterpolationParameters{T}(itp, values, ϕ_max, r_min, r_max, z_min, z_max)
 end
 
-function InterpolationParameters(cs::CoilSet{T}) where {T}
+function InterpolationParameters(cset::CoilSet{T}) where {T}
   values = zeros(T, 3)
   ϕ_max = 2π
-  r_max = extreme_coils(cs, :r)
-  r_min = extreme_coils(cs, :r, vmax=false)
-  z_max = extreme_coils(cs, :z)
-  z_min = extreme_coils(cs, :z, vmax=false)
-  return InterpolationParameters{T}(itp, values, ϕ_max, r_min, r_max, z_min, z_max)
-end  
-
-function follow_field(itp::MagneticField{T},
+  r_max = extreme_coils(cset, :r, vmax=true)
+  r_min = extreme_coils(cset, :r, vmax=false)
+  z_max = extreme_coils(cset, :z, vmax=true)
+  z_min = extreme_coils(cset, :z, vmax=false)
+  return InterpolationParameters{T}(cset, values, ϕ_max, r_min, r_max, z_min, z_max)
+end
+  
+function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                       rϕz::Array{Float64},
                       ϕ_end::Float64;
                       ϕ_step::Float64=zero(T),
@@ -45,11 +45,11 @@ function follow_field(itp::MagneticField{T},
     ϕ_start = rϕz[2]
     u = @SVector [rϕz[1], rϕz[3]]
     ϕ_span = (ϕ_start,ϕ_end)
-    params = InterpolationParameters(itp)
+    params = InterpolationParameters(fieldinfo)
     prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
     if poincare
-        N = abs(ϕ_end - ϕ_start)/(2π/itp.nfp)
-        saveat = [i * 2*π/itp.nfp + ϕ_start for i in 1:N]
+        N = abs(ϕ_end - ϕ_start)/(params.ϕ_max)
+        saveat = [i * 2*π/(params,ϕ_max) + ϕ_start for i in 1:N]
     else
         saveat = []
     end
@@ -58,28 +58,7 @@ function follow_field(itp::MagneticField{T},
 
 end
 
-function follow_field(cs::CoilSet{T},
-                      rϕz::Array{Float64},
-                      ϕ_end::Float64;
-                      ϕ_step::Float64=zero(T),
-                      poincare::Int64=0
-                     ) where {T}
-    ϕ_start = rϕz[2]
-    u = @SVector [rϕz[1], rϕz[3]]
-    ϕ_span = (ϕ_start,ϕ_end)
-    params = CoilInterpolationParameters(cs, zeros(T, 3))
-    prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
-    if poincare != 0
-        N = abs(ϕ_end - ϕ_start)/(2π/poincare)
-        saveat = [i * 2*π/poincare + ϕ_start for i in 1:N]
-    else
-        saveat = []
-    end
-    abs(ϕ_step) > zero(T) ? solve(prob, Tsit5(), dtmax = ϕ_step, saveat = saveat) :
-                              solve(prob, Tsit5(), saveat = saveat)
-end
-
-
+"""
 function follow_field_s(itp::MagneticField{T},
                       rϕz::Array{Float64},
                       s_end::Float64;
@@ -91,19 +70,21 @@ function follow_field_s(itp::MagneticField{T},
     prob = ODEProblem(field_deriv_s, u, s_span, params)
     abs(s_step) > zero(T) ? solve(prob, Tsit5(), dtmax = s_step, saveat = s_step) :
                             solve(prob, Tsit5(), saveat = s_step)
+"""
+#This version gets called from the main follow field
+#it picks out the interpolator type via the field_info field
+#and passes to the correct field_deriv_ϕ function below
+function field_deriv_ϕ(u::AbstractVector{T},
+                         p::InterpolationParameters{T},
+                         ϕ::T;
+                        ) where {T}
+    if p.r_min < u[1] < p.r_max && p.z_min < u[2] < p.z_max
+        return field_deriv_ϕ(u, p.field_info, ϕ)
+    else
+        return u
+    end
 end
 
-function field_deriv_ϕ!(du::Vector{Float64},
-                          u::Vector{Float64},
-                          itp::MagneticField,
-                          ϕ::Float64;
-                         )
-    r = u[1]
-    z = u[2]
-    br, bϕ, bz = itp(r, ϕ, z)
-    du[1] = r * br/bϕ
-    du[2] = r * bz/bϕ
-end
 
 function field_deriv_ϕ(u::AbstractVector,
                          itp::MagneticField{T},
@@ -113,20 +94,45 @@ function field_deriv_ϕ(u::AbstractVector,
   br, bϕ, bz = itp(u[1], ϕ, u[2])
   dr = u[1] * br/bϕ
   dz = u[1] * bz/bϕ
-  SVector{2,T}(dr, dz)
+  return SVector{2,T}(dr, dz)
 end
 
-"""
-"""
-function field_deriv_ϕ(u::AbstractVector{T},
-                         p::InterpolationParameters{T},
-                         ϕ::T;
+function field_deriv_ϕ( u::AbstractVector,
+                         cset::CoilSet{T},
+                         ϕ::Float64;
                         ) where {T}
-    #ϕ = mod(ϕ, p.ϕ_max)
+    
+    r = u[1]
+    z = u[2]
+    cc = Cylindrical(r, ϕ, z)
+    (br, bϕ, bz) = compute_magnetic_field(cset, cc)
+    dr = r * br/bϕ
+    dz = r * bz/bϕ
+    return SVector{2,T}(dr, dz)
+end
+
+#todo: fix this. right now it doesn't seem to know how far to follow
+function follow_field_s(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
+                      rϕz::Array{Float64},
+                      s_end::Float64;
+                      s_step::Float64=zero(T),
+                      ) where{T}
+    u = @SVector [rϕz[1], rϕz[2], rϕz[3]]
+    s_span = (0, s_end)
+    params = InterpolationParameters(fieldinfo)
+    prob = ODEProblem(field_deriv_s, u, s_span, params)
+    saveat = []
+    abs(s_step) > zero(T) ? solve(prob, Tsit5(), dtmax = s_step, saveat = saveat) :
+                            solve(prob, Tsit5(), saveat = saveat)
+end
+
+#Check bounds and then call the correct derivative function
+function field_deriv_s(u::AbstractVector{T},
+                         p::InterpolationParameters{T},
+                         s::T;
+                        ) where {T}
     if p.r_min < u[1] < p.r_max && p.z_min < u[2] < p.z_max
-        p.values .= p.itp(u[1], ϕ, u[2])
-        bϕ = u[1] / p.values[2]
-        return SVector{2,T}(bϕ * p.values[1], bϕ * p.values[3])
+        return field_deriv_s(u, p.field_info, s)
     else
         return u
     end
@@ -142,18 +148,18 @@ function field_deriv_ϕ(u::AbstractVector{T},
      bϕ = u[1] / p.values[2]
      return SVector{2,T}(bϕ * p.values[1], bϕ * p.values[3])
 end
-#integration with respect to arclength
-function field_deriv_s(u::AbstractVector{T},
-                       p::InterpolationParameters{T},
-                       s::T;) where {T}
-    ϕ = mod(u[3], p.ϕ_max)
-    map!(i->getfield(p.itp, i)(u[1], ϕ, u[2]), p.values, 1:3)
-    bmagsq = sum(p.values.^2)
-    dr = p.values[1]/bmagsq
-    dz = p.values[2]/bmagsq
-    dϕ = (p.values[3]/u[1])/bmagsq
-    SVector{3, T}(dr, dϕ, dz)
 
+#integration with respect to arclength
+function field_deriv_s(u::AbstractVector,
+                       itp::MagneticField{T},
+                       s::Float64;) where {T}
+    ϕ = mod(u[2], 2π/itp.nfp)
+    br, bϕ, bz = itp(u[1], ϕ, u[3])
+    bmagsq = br^2 + bϕ^2 + bz^2
+    dr = br/bmagsq
+    dz = bz/bmagsq
+    dϕ = (bϕ/u[1])/bmagsq
+    return SVector{3, T}(dr, dϕ, dz)
 end
 
 function poincare(itp::MagneticField,
