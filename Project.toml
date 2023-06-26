@@ -1,11 +1,12 @@
 name = "MagneticFieldToolkit"
 uuid = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
 authors = ["Benjamin Faber <bfaber@wisc.edu>", "Aaron Bader <abader@engr.wisc.edu>", "Max Ruth <mer335@cornell.edu>"]
-version = "0.1.10"
+version = "0.1.11"
 
 [deps]
 CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
 HCubature = "19dc6840-f33b-545b-b366-655c7e3ffd49"
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NetCDF = "30363a11-5582-574a-97bb-aa9a979735b9"
@@ -23,12 +24,12 @@ HCubature = "1.1"
 Interpolations = "0.14.3"
 NetCDF = "0.10, 0.11"
 OrdinaryDiffEq = "6"
-PlasmaEquilibriumToolkit = "0.5.5, 0.6, 0.7"
+PlasmaEquilibriumToolkit = "0.7"
 Polyester = "0.5, 0.6, 0.7"
 Requires = "1"
 StaticArrays = "1"
 StructArrays = "0.6"
-julia = "1.6"
+julia = "1.7, 1.8, 1.9"
 
 [extras]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
