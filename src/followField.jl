@@ -35,6 +35,8 @@ function InterpolationParameters(cset::CoilSet{T}) where {T}
   z_min = extreme_coils(cset, :z, vmax=false)
   return InterpolationParameters{T}(cset, values, ϕ_max, r_min, r_max, z_min, z_max)
 end
+
+  
   
 function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                       rϕz::Array{Float64},
@@ -63,6 +65,62 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                               solve(prob, Tsit5(), saveat = saveat)
 
 end
+
+function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
+                        rϕz::Array{Float64},
+                        ϕ_end::Float64,
+                        wall::Union{AbstractArray{FlareWall}, FlareWall},
+                        wall_inverse::Union{AbstractArray{Bool}, Bool};
+                        ϕ_step::Float64=π/25,
+                        poincare::Bool=false,
+                        poincare_res::Real=2π,
+                        wall_res::Integer = 128 #eventually allow this to be a vector
+                       ) where {T}
+
+    wall_at_t = Array{Tuple{T,T}}(undef, wall_res)
+    function outside_bounds(u::SVector{2, F}, t::F) where {F <: AbstractFloat}
+      outside = false
+      θs = range(0, 2π, wall_res)
+      if typeof(wall) <: AbstractArray
+        for i in length(wall)
+          #note the wall is periodic by default, might need to fix that for finite extent walls
+          wall_at_t = [(wall[i].R(θ, t), wall[i].Z(θ, t)) for θ in θs]
+          if !in_surface(u, wall_at_t, inverse=wall_inverse[i])
+            return true
+          end
+        end
+      else
+        wall_at_t = [(wall.R(θ, t), wall.Z(θ, t)) for θ in θs]
+        return !in_surface(u, wall_at_t, inverse=wall_inverse)
+      end
+      return outside
+    end
+
+    ϕ_start = rϕz[2]
+    u = @SVector [rϕz[1], rϕz[3]]
+    ϕ_span = (ϕ_start,ϕ_end)
+    params = InterpolationParameters(fieldinfo)
+    prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
+    println(typeof(u))
+    condition(u, t, integrator) = outside_bounds(u, t)
+    affect!(integrator) = terminate!(integrator)
+    cb = DiscreteCallback(condition, affect!)
+    if poincare
+        if poincare_res == 2π
+          ϕ_max = params.ϕ_max
+        else
+          ϕ_max = poincare_res
+        end
+        N = abs(ϕ_end - ϕ_start)/(ϕ_max)
+        saveat = [i * (ϕ_max) + ϕ_start for i in 1:N]
+    else
+        saveat = []
+    end
+    abs(ϕ_step) > zero(T) ? solve(prob, Tsit5(), dtmax = ϕ_step, saveat = saveat, callback=cb) :
+                              solve(prob, Tsit5(), saveat = saveat, callback=cb)
+
+end
+
 
 """
 function follow_field_s(itp::MagneticField{T},

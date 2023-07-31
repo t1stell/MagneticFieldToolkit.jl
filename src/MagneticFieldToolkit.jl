@@ -10,6 +10,7 @@ using LinearAlgebra
 using HCubature
 using CoordinateTransformations
 using PlasmaEquilibriumToolkit
+using StellaratorGrids
 
 
 # File load 
@@ -23,7 +24,7 @@ export compute_magnetic_potential, compute_magnetic_field
 export generate_mgrid, extreme_coils
 
 # Following calculations
-export follow_field, follow_field_s
+export follow_field, follow_field_s, follow_to_wall
 
 include("bfieldUtils.jl")
 include("ReadMagneticField.jl")
