@@ -1,6 +1,7 @@
 @testset "Field following tests" begin 
     #make a fake grid with field only in the toroidal direction
     rtol = 1.0E-10
+    rtol_lo = 1.0E-5
     r = range(0.8, 1.2, 50)
     z = range(-0.2, 0.2, 50)
     θ = range(0, π/5, 50)
@@ -29,7 +30,7 @@
         end
     end
     #make a wall that we can use for testing collisions
-    nζ = 80
+    nζ = 180
     nθ = 64
     θrange = range(0, 2π, nθ)
     ζs = range(0, π, nζ)
@@ -50,22 +51,20 @@
     @testset "Follow a point to a wall" begin
         for R in range(1.03, 1.18, 6)
             rθz = [R, 0.0, 0.0]
-            a = follow_to_wall(mg, rθz, 2π, ves, false, ϕ_step = ϕ_step)
+            a = follow_to_wall(mg, rθz, 2π, ves, false, ϕ_step = ϕ_step, rtol=1.0E-10)
             @test isapprox(R, a.u[end][1], rtol=rtol)
-            #the toroidal direction is only valid to the nearest pi/100
+            #the toroidal direction is only valid to the resolution of the wall
             θg = m*R+b
-            @test a.t[end] > θg
-            @test a.t[end] < θg + ϕ_step
+            @test isapprox(a.t[end], θg, rtol=rtol_lo)
          end
     end
     @testset "Follow backwards" begin
         for R in range(1.03, 1.18, 6)
             rθz = [R, 0.0, 0.0]
-            a = follow_to_wall(mg, rθz, -2π, ves, false, ϕ_step = ϕ_step)
+            a = follow_to_wall(mg, rθz, -2π, ves, false, ϕ_step = ϕ_step, rtol=1.0E-10)
             @test isapprox(R, a.u[end][1], rtol=rtol)
             θg =  -(m*R+b)
-            @test a.t[end] < θg
-            @test a.t[end] > θg - ϕ_step 
+            @test isapprox(a.t[end], θg, rtol=rtol_lo)
         end
     end
 

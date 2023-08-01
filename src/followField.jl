@@ -74,34 +74,43 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                         ϕ_step::Float64=π/25,
                         poincare::Bool=false,
                         poincare_res::Real=2π,
-                        wall_res::Integer = 128 #eventually allow this to be a vector
+                        wall_res::Integer = 128, #eventually allow this to be a vector
+                        rtol::Float64=1.0E-6 #tolerance for the last step
                        ) where {T}
 
     wall_at_t = Array{Tuple{T,T}}(undef, wall_res)
+    ϕ_start = rϕz[2]
+    u = @SVector [rϕz[1], rϕz[3]]
+    start_inside = true
+    last_good = rϕz[:]
+
     function outside_bounds(u::SVector{2, F}, t::F) where {F <: AbstractFloat}
-      outside = false
-      θs = range(0, 2π, wall_res)
-      if typeof(wall) <: AbstractArray
-        for i in length(wall)
-          #note the wall is periodic by default, might need to fix that for finite extent walls
-          wall_at_t = [(wall[i].R(θ, t), wall[i].Z(θ, t)) for θ in θs]
-          if !in_surface(u, wall_at_t, inverse=wall_inverse[i])
-            return true
-          end
+     
+        outside = false
+        θs = range(0, 2π, wall_res)
+        if typeof(wall) <: AbstractArray
+            for i in length(wall)
+                #note the wall is periodic by default, might need to fix that for finite extent walls
+                wall_at_t = [(wall[i].R(θ, t), wall[i].Z(θ, t)) for θ in θs]
+                if !in_surface(u, wall_at_t, inverse=wall_inverse[i])
+                    return true
+                end
+            end
+        else
+            wall_at_t = [(wall.R(θ, t), wall.Z(θ, t)) for θ in θs]
+            if !in_surface(u, wall_at_t, inverse=wall_inverse)
+                return true
+            end
         end
-      else
-        wall_at_t = [(wall.R(θ, t), wall.Z(θ, t)) for θ in θs]
-        return !in_surface(u, wall_at_t, inverse=wall_inverse)
-      end
-      return outside
+        last_good = [u[1], t, u[2]]
+        return outside
     end
     
     
-    ϕ_start = rϕz[2]
-    u = @SVector [rϕz[1], rϕz[3]]
     #before starting check if we're outside bounds
     if outside_bounds(u, ϕ_start)
         ϕ_end = ϕ_start
+        start_inside = false
     end
 
 
@@ -122,9 +131,36 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     else
         saveat = []
     end
-    abs(ϕ_step) > zero(T) ? solve(prob, Tsit5(), dtmax = ϕ_step, saveat = saveat, callback=cb) :
+    a = abs(ϕ_step) > zero(T) ? solve(prob, Tsit5(), dtmax = ϕ_step, saveat = saveat, callback=cb) :
                               solve(prob, Tsit5(), saveat = saveat, callback=cb)
 
+    #Find the last step, we do this by starting at the last good point and gradually shrinking
+    if !start_inside
+        return a
+    end
+    tolcheck = abs(a.t[end] - last_good[2])
+    dϕ_new = tolcheck/10
+    c = 0
+    t_end = a.t[end]
+    u_end = a.u[end]
+    while tolcheck > rtol
+        #note will have to turn off diffusion here we use it in this calc
+        u = @SVector [last_good[1], last_good[3]] 
+        ϕ_span = (last_good[2], a.t[end])
+        prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
+        a_new = solve(prob, Tsit5(), dtmax = dϕ_new, callback = cb)
+        t_end = a_new.t[end]
+        u_end = a_new.u[end]
+        tolcheck = abs(a_new.t[end] - last_good[2])
+        dϕ_new = tolcheck/10
+        c += 1
+        if c == 10
+            break
+        end
+    end
+    push!(a.t, t_end)
+    push!(a.u, u_end)
+    return a
 end
 
 
