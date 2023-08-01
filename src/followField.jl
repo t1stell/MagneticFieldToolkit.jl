@@ -65,7 +65,31 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                               solve(prob, Tsit5(), saveat = saveat)
 
 end
+"""
+    function follow_to_wall(fieldinfo, rϕz, ϕ_end, wall, wall_inverse;
+                            ϕ_step = π/25, poincare=fase,
+                            poincare_res = 2π, wall_res = 128, rtol = 1.0E-6
+                            diffusion = 0.0)
 
+This function is like follow_field except it carries around a bunch of extra stuff so it can
+also calculate intersections with the wall. 
+
+#Arguments
+
+ - `field_info::Union{MagneticField{T}, CoilSet{T}}`: The magnetic field, it can either be a magnetic field object (i.e. Br, Bz, Bϕ on a cylindrical grid) or a CoilSet object. If speed is necessary, should try to generate a magnetic field object
+ - `rϕz::Array{Float64}`: The starting point in r, ϕ, z where ϕ is the cylindrical coordinate. (be careful, θ is used as the cylindrical coordinate in CoordinateTransformations)
+ - `ϕ_end::Float64`: The value at which to terminate the following.  If less than the ϕ value in `rϕz`, it will follow in the reverse direction
+ - `wall::FlareWall`: Can be either a singular wall, or an array of walls.  These objects are found in StellaratorGrids.jl
+ - `wall_inverse::Bool`: Can be a single value or an array of the same size as FlareWall. If set to "false" points outisde the wall polygon will be marked as out of bounds.  If true, points inside the wall will be marked out of bounds. 
+
+#Optional Arguments
+ - `ϕ_step`: default π/25.  This is the internal integration steps. Higher values will calculate quicker, but may produce unsatisfactory errors.  Each configuration will need to do a convergence scan to determine the best value
+ - `poincare`: This is a bool value to output a poincare result (i.e. export every value at a given phi)
+ - `poincare_res`: default 2π.  This is the value at which to output a poincare result.  
+ - `wall_res`: default 128.  The value on which to resample the wall for the purposes of quick polygonal calculations
+ - `rtol`: default 1.0E-6. This is the tolerance for the line search segment to find the wall intersection. At low values, the proper resolution is actually set by the wall resolution
+ - `diffusion`: default 0.  This is the value in meters^2/meters. That is, every meter step perpendicularly this value. The actual diffusion is calculated at every integration step
+"""
 function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                         rϕz::Array{Float64},
                         ϕ_end::Float64,
@@ -75,22 +99,26 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                         poincare::Bool=false,
                         poincare_res::Real=2π,
                         wall_res::Integer = 128, #eventually allow this to be a vector
-                        rtol::Float64=1.0E-6 #tolerance for the last step
+                        rtol::Float64=1.0E-6, #tolerance for the last step
+                        diffusion::Float64=0.0
                        ) where {T}
 
-    wall_at_t = Array{Tuple{T,T}}(undef, wall_res)
-    ϕ_start = rϕz[2]
-    u = @SVector [rϕz[1], rϕz[3]]
-    start_inside = true
-    last_good = rϕz[:]
+    wall_at_t = Array{Tuple{T,T}}(undef, wall_res) #holder for the wall at a given toroidal value 
+    ϕ_start = rϕz[2] #starting toroidal angle
+    u = @SVector [rϕz[1], rϕz[3]] #starting u vector, (R, Z).  
+    start_inside = true #flag for whether we start inside the boundary
+    last_good = rϕz[:] #tracker for the last good point
+    penult_good = rϕz[:] #tracker for the penultimate point (needed for diffusion)
 
+    # this is a function used in the callback, it checks if we are currently on the "correct" side
+    # of all the walls
     function outside_bounds(u::SVector{2, F}, t::F) where {F <: AbstractFloat}
      
         outside = false
         θs = range(0, 2π, wall_res)
         if typeof(wall) <: AbstractArray
             for i in length(wall)
-                #note the wall is periodic by default, might need to fix that for finite extent walls
+                #note the wall is periodic by default, will need to fix that for finite extent walls
                 wall_at_t = [(wall[i].R(θ, t), wall[i].Z(θ, t)) for θ in θs]
                 if !in_surface(u, wall_at_t, inverse=wall_inverse[i])
                     return true
@@ -102,6 +130,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                 return true
             end
         end
+        penult_good = copy(last_good) #if we don't copy, it will just pass by reference
         last_good = [u[1], t, u[2]]
         return outside
     end
@@ -119,7 +148,8 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
     condition(u, t, integrator) = outside_bounds(u, t)
     affect!(integrator) = terminate!(integrator)
-    cb = DiscreteCallback(condition, affect!)
+    cb_wall = DiscreteCallback(condition, affect!)
+    cbset = CallbackSet(cb_wall)
     if poincare
         if poincare_res == 2π
           ϕ_max = params.ϕ_max
@@ -131,8 +161,8 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     else
         saveat = []
     end
-    a = abs(ϕ_step) > zero(T) ? solve(prob, Tsit5(), dtmax = ϕ_step, saveat = saveat, callback=cb) :
-                              solve(prob, Tsit5(), saveat = saveat, callback=cb)
+    a = abs(ϕ_step) > zero(T) ? solve(prob, Tsit5(), dtmax = ϕ_step, saveat = saveat, callback=cbset) :
+                              solve(prob, Tsit5(), saveat = saveat, callback=cbset)
 
     #Find the last step, we do this by starting at the last good point and gradually shrinking
     if !start_inside
@@ -144,11 +174,11 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     t_end = a.t[end]
     u_end = a.u[end]
     while tolcheck > rtol
-        #note will have to turn off diffusion here we use it in this calc
         u = @SVector [last_good[1], last_good[3]] 
         ϕ_span = (last_good[2], a.t[end])
         prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
-        a_new = solve(prob, Tsit5(), dtmax = dϕ_new, callback = cb)
+        #note do not use diffusion for this
+        a_new = solve(prob, Tsit5(), dtmax = dϕ_new, callback = cb_wall)
         t_end = a_new.t[end]
         u_end = a_new.u[end]
         tolcheck = abs(a_new.t[end] - last_good[2])
