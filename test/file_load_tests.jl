@@ -41,8 +41,8 @@
   end
   p1 = bmw(2.0, 0.0, 0.0, A=true)
   p2 = bmw(2.1, 0.2, 0.1, A=true)
-  println("p1: ",p1)
-  println("p2: ",p2)
+#  println("p1: ",p1)
+#  println("p2: ",p2)
   
   @testset "BMW Interpolator" begin
     @test isapprox(p1[1][1], 0.0, atol=atol)

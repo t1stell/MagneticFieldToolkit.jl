@@ -68,6 +68,13 @@
             @test a.t[end] > θg - ϕ_step 
         end
     end
+
+    @testset "Check out of bounds initial point" begin
+        a = follow_to_wall(mg, [1.3, 0.2, 0.5], 2π, ves, false)
+        @test isapprox(a.u[end][1], 1.3, rtol=rtol)
+        @test isapprox(a.u[end][2], 0.5, rtol=rtol)
+        @test isapprox(a.t[end], 0.2, rtol=rtol)
+    end
 end
 
 

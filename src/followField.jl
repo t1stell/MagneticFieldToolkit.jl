@@ -95,9 +95,16 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
       end
       return outside
     end
-
+    
+    
     ϕ_start = rϕz[2]
     u = @SVector [rϕz[1], rϕz[3]]
+    #before starting check if we're outside bounds
+    if outside_bounds(u, ϕ_start)
+        ϕ_end = ϕ_start
+    end
+
+
     ϕ_span = (ϕ_start,ϕ_end)
     params = InterpolationParameters(fieldinfo)
     prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
@@ -207,7 +214,7 @@ function field_deriv_ϕ(u::AbstractVector{T},
                         ) where {T}
      #ϕ = mod(ϕ, p.ϕ_max)
      p.values .= compute_magnetic_field(p.cs, Cylindrical(u[1], ϕ, u[2]))
-     println(p.values, u, ϕ)
+     #println(p.values, u, ϕ)
      bϕ = u[1] / p.values[2]
      return SVector{2,T}(bϕ * p.values[1], bϕ * p.values[3])
 end
