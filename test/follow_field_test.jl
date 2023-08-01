@@ -28,6 +28,46 @@
             end
         end
     end
+    #make a wall that we can use for testing collisions
+    nζ = 80
+    nθ = 64
+    θrange = range(0, 2π, nθ)
+    ζs = range(0, π, nζ)
+    Rp = Array{Float64}(undef, nθ, nζ)
+    Zp = similar(Rp)
+    θs = similar(Rp)
+    for (iζ, ζ) in enumerate(ζs)
+        a = 0.02+abs(π/2-ζ)/(π/2)*0.18
+        Zp[:,iζ] = a .* sin.(θrange)
+        Rp[:,iζ] = 1.0 .+ (a.* cos.(θrange))
+        θs[:,iζ] = θrange
+    end
+    (R,Z) = StellaratorGrids.create_wall_splines(ζs, θrange, Rp, Zp, "")
+    ves = FlareWall(nζ, nθ, Rp, Zp, collect(ζs), θs, 2, R, Z, "")
+    m = π/2 / (1.02-1.2)
+    b = -1.2*m
+    ϕ_step = π/100
+    @testset "Follow a point to a wall" begin
+        for R in range(1.03, 1.18, 6)
+            rθz = [R, 0.0, 0.0]
+            a = follow_to_wall(mg, rθz, 2π, ves, false, ϕ_step = ϕ_step)
+            @test isapprox(R, a.u[end][1], rtol=rtol)
+            #the toroidal direction is only valid to the nearest pi/100
+            θg = m*R+b
+            @test a.t[end] > θg
+            @test a.t[end] < θg + ϕ_step
+         end
+    end
+    @testset "Follow backwards" begin
+        for R in range(1.03, 1.18, 6)
+            rθz = [R, 0.0, 0.0]
+            a = follow_to_wall(mg, rθz, -2π, ves, false, ϕ_step = ϕ_step)
+            @test isapprox(R, a.u[end][1], rtol=rtol)
+            θg =  -(m*R+b)
+            @test a.t[end] < θg
+            @test a.t[end] > θg - ϕ_step 
+        end
+    end
 end
 
 

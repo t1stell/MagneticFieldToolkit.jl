@@ -101,7 +101,6 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     ϕ_span = (ϕ_start,ϕ_end)
     params = InterpolationParameters(fieldinfo)
     prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
-    println(typeof(u))
     condition(u, t, integrator) = outside_bounds(u, t)
     affect!(integrator) = terminate!(integrator)
     cb = DiscreteCallback(condition, affect!)
