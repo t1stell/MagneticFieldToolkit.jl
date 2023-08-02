@@ -118,8 +118,13 @@ end
 """
   compute_magnetic_field(cset, xyz; rtol=rtol, currents=currents)
   compute_magnetic_field(cset, cc; rtol=rtol, currents=currents)
+  compute_magnetic_field(cset, v; rtol=rtol, currents=currents, xyz=false)
   compute_magnetic_field(coil, xyz; rtol=rtol, current=current)
   compute_magnetic_field(coil, cc; rtol=rtol, current=current)
+  compute_magnetic_field(coil, v; rtol=rtol, currents=currents, xyz=false)
+  compute_magnetic_field(itp, cc)
+  compute_magnetic_field(itp, xyz)
+  compute_magnetic_field(itp, v, xyz=false)
 
 Function to compute a magnetic field at a point from either an individual coil or a set of coils
 
@@ -127,14 +132,16 @@ Function to compute a magnetic field at a point from either an individual coil o
  - `cset::Coilset`: A set of coils, can be obtained from using read_vmec_coils on an ASCII coils file
  - `coil::CoilFilamet`: A singular filament (no standalone constructor yet)
  - `xyz::SVector(3)`: A StaticVector representing the point to calculate the field at in Cartesian coordinates
- - `cc::Cylindrical`: A StaticVector representing the point to calculate the field at in Cylindrical coordinates
+ - `cc::Cylindrical`: A CylindricalCoordinates object representing the point to calculate the field at in Cylindrical coordinates
+ - `v::AbstractVector`: If neither an SVector or a Cylindrical coordinate vector is used, cylindrical is assumed unless the optional flag is set
 
 # Optional Arguments
  - `rtol::Float64`: The required tolerance, default is 1.0E-10
  - `currents::Vector{Float64}` or `current::Float64`: for a coil set, this is an array of currents, one for each family.  For a individual coil, it's the current in that coil.
+ - `xyz::Bool`: A flag for whether to assume the field is Cartesian. Default is cylindrical
 
 # Outputs
- - `B::SVector(3)`: The vector magnetic field obtained from integrating μ_0/4π * I * ∫ds⃗ x ξ⃗/ξ^2 where I is the current, and ξ is the vector between the point on the coil and the target point.
+ - `B::SVector(3)`: The vector magnetic field obtained from integrating μ_0/4π * I * ∫ds⃗ x ξ⃗/ξ^2 where I is the current, and ξ is the vector between the point on the coil and the target point.  If the input is Cartesian, so is the output. If the input is Cylindrical, so is the output
 
 """
 function compute_magnetic_field(cset::CoilSet{T}, xyz::SVector;
@@ -234,6 +241,27 @@ function compute_magnetic_field(coil::CoilFilament{T}, coords::C;
     else #in rθz
         rθz = Cylindrical(coords[1], coords[2], coords[3])
         return compute_magnetic_field(coil, rθz, rtol=rtol, current=current, exact=exact)
+    end
+end
+
+function compute_magnetic_field(itp::MagneticField{T}, xyz::SVector) where {T}
+    cc = CylindricalFromCartesian()(xyz)
+    Br, Bϕ, Bz = itp(cc.r, cc.θ, cc.z)
+    Bx = Br * cos(cc.θ) - Bϕ * sin(cc.θ)
+    By = Br * sin(cc.θ) + Bϕ * cos(cc.θ)
+    return SVector(Bx, By, Bz)
+end
+
+function compute_magnetic_field(itp::MagneticField{T}, cc::Cylindrical) where {T}
+    Br, Bϕ, Bz = itp(cc.r, cc.θ, cc.z)
+    return SVector(Br, Bϕ, Bz)
+end
+
+function compute_magnetic_field(itp::MagneticField{T}, coords::C) where {T, C<:AbstractArray}
+    if xyz
+        return compute_magnetic_field(itp, SVector{3}(coords))
+    else
+        return compute_magnetic_field(itp, Cylindrical(coords[1], coords[2], coords[3]))
     end
 end
 

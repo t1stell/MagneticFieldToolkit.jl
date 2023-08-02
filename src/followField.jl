@@ -237,9 +237,10 @@ function field_deriv_ϕ(u::AbstractVector,
                          ϕ::Float64;
                         ) where {T}
   ϕ = mod(ϕ, 2π/itp.nfp)
-  br, bϕ, bz = itp(u[1], ϕ, u[2])
-  dr = u[1] * br/bϕ
-  dz = u[1] * bz/bϕ
+  cc = Cylindrical(u[1], ϕ, u[2])
+  brϕz = compute_magnetic_field(itp, cc) 
+  dr = u[1] * brϕz[1]/brϕz[2]
+  dz = u[1] * brϕz[3]/brϕz[2]
   return SVector{2,T}(dr, dz)
 end
 
