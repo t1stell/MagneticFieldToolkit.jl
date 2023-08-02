@@ -116,6 +116,8 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
      
         outside = false
         θs = range(0, 2π, wall_res)
+
+        #different work flows depending on the type of wall (TODO: move these subfunctions into StellaratorGrids and use multiple dispatch)
         if typeof(wall) <: AbstractArray
             for i in length(wall)
                 #note the wall is periodic by default, will need to fix that for finite extent walls
@@ -137,6 +139,8 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     
     
     #before starting check if we're outside bounds
+    #don't return immediately.  To retain the correct output structure, make the follower immediately exit
+    #by setting end = start
     if outside_bounds(u, ϕ_start)
         ϕ_end = ϕ_start
         start_inside = false
@@ -144,12 +148,15 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
 
 
     ϕ_span = (ϕ_start,ϕ_end)
-    params = InterpolationParameters(fieldinfo)
-    prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
-    condition(u, t, integrator) = outside_bounds(u, t)
-    affect!(integrator) = terminate!(integrator)
-    cb_wall = DiscreteCallback(condition, affect!)
-    cbset = CallbackSet(cb_wall)
+    params = InterpolationParameters(fieldinfo) #struct with calculation info
+    prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params) #the ODE problem to solve
+    condition_wall(u, t, integrator) = outside_bounds(u, t) #The bound condition
+    stop_affect!(integrator) = terminate!(integrator) #identify the affect used for the bound condition
+    cb_wall = DiscreteCallback(condition_wall, stop_affect!) #set up the actual bound
+    #diffusion goes here
+    cbset = CallbackSet(cb_wall) #make it into a set, both are DiscreteCallbacks so they'll be checked in order
+
+    #This section creates an array of values for the integrator to save at, at the resolution of poincare_res
     if poincare
         if poincare_res == 2π
           ϕ_max = params.ϕ_max
@@ -166,10 +173,11 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
 
     #Find the last step, we do this by starting at the last good point and gradually shrinking
     if !start_inside
-        return a
+        return a #we checked this earlier
     end
-    tolcheck = abs(a.t[end] - last_good[2])
-    dϕ_new = tolcheck/10
+
+    tolcheck = abs(a.t[end] - last_good[2]) #distance between the integrator final point, and the last known point inside the boundary
+    dϕ_new = tolcheck/10 #New integrator step
     c = 0
     t_end = a.t[end]
     u_end = a.u[end]
@@ -177,18 +185,20 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
         u = @SVector [last_good[1], last_good[3]] 
         ϕ_span = (last_good[2], a.t[end])
         prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
-        #note do not use diffusion for this
-        a_new = solve(prob, Tsit5(), dtmax = dϕ_new, callback = cb_wall)
+        #note do not use diffusion for this, do not use the full cbset
+        a_new = solve(prob, Tsit5(), dtmax = dϕ_new, callback = cb_wall) #set up a new problem
         t_end = a_new.t[end]
         u_end = a_new.u[end]
-        tolcheck = abs(a_new.t[end] - last_good[2])
-        dϕ_new = tolcheck/10
+        tolcheck = abs(a_new.t[end] - last_good[2]) #new difference between end and last good point
+        dϕ_new = tolcheck/10 #divide integrator step by another factor of 10 and repeat
         c += 1
-        if c == 10
+        if c == 15 # This is a check, at this point, you are probably at machine precision.  Should never get here
             break
         end
     end
-    push!(a.t, t_end)
+
+    # add the points to the end (note there will be some bad points prior to this, should we remove them?`
+    push!(a.t, t_end) 
     push!(a.u, u_end)
     return a
 end
