@@ -26,10 +26,10 @@ export generate_mgrid, extreme_coils
 # Following calculations
 export follow_field, follow_field_s, follow_to_wall
 
-include("bfieldUtils.jl")
 include("ReadMagneticField.jl")
 include("QuadraticFluxMinimize.jl")
 include("Coils.jl")
+include("bfieldUtils.jl")
 include("followField.jl")
 
 function __init__()
