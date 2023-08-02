@@ -74,6 +74,19 @@
         @test isapprox(a.u[end][2], 0.5, rtol=rtol)
         @test isapprox(a.t[end], 0.2, rtol=rtol)
     end
+
+
+    coilname = joinpath(@__DIR__, "circular_vmec_coils.txt")
+    cset = read_vmec_coils(coilname)
+    @testset "check following a coil set" begin
+        a = follow_field(cset, [10.0, 0.0, 0.0], 2π, ϕ_step = π/100, poincare=true, poincare_res = π/4)
+        for u in a.u
+            @test isapprox(u[1], 10.0, rtol=rtol_lo)
+            @test abs(u[2]) < 1.0E-13
+        end
+
+    end
+
 end
 
 

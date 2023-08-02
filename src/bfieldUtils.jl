@@ -176,6 +176,19 @@ function compute_magnetic_field(cset::CoilSet{T}, cc::Cylindrical;
   return SVector(Br, Bθ, Bz)
 end
 
+function compute_magnetic_field(cset::CoilSet{T}, coords::C;
+                                rtol = 1.0E-10, currents=nothing, exact=false, xyz=false
+                               ) where {T, C<:AbstractArray}
+    if xyz
+        xyzc = SVector{3}(coords)
+        return compute_magnetic_field(cset, xyzc, rtol=rtol, currents=currents, exact=exact)
+    else #in rθz
+        rθz = Cylindrical(coords[1], coords[2], coords[3])
+        return compute_magnetic_field(cset, rθz, rtol=rtol, currents=currents, exact=exact)
+    end
+end
+
+
 function compute_magnetic_field(coil::CoilFilament{T}, xyz::SVector;
                          rtol=1.0E-10, current=nothing, 
                          exact=false) where{T}
@@ -210,6 +223,18 @@ function compute_magnetic_field(coil::CoilFilament{T}, cc::Cylindrical;
   Br = Bx * cos(cc.θ) + By * sin(cc.θ)
   Bθ = -Bx * sin(cc.θ) + By * cos(cc.θ)
   return SVector(Br, Bθ, Bz)
+end
+
+function compute_magnetic_field(coil::CoilFilament{T}, coords::C;
+                         rtol = 1.0E-10, current=nothing, exact=false, xyz=false
+                               ) where {T, C <: AbstractArray}
+    if xyz
+        xyzc = SVector{3}(coords)
+        return compute_magnetic_field(coil, xyzc, rtol=rtol, current=current, exact=exact)
+    else #in rθz
+        rθz = Cylindrical(coords[1], coords[2], coords[3])
+        return compute_magnetic_field(coil, rθz, rtol=rtol, current=current, exact=exact)
+    end
 end
 
 #More accurate integration using quadrature.  Slow

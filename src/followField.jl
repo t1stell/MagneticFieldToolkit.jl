@@ -250,8 +250,8 @@ function field_deriv_ϕ( u::AbstractVector,
     
     r = u[1]
     z = u[2]
-    cc = Cylindrical(r, ϕ, z)
-    (br, bϕ, bz) = compute_magnetic_field(cset, cc)
+#    cc = Cylindrical(r, ϕ, z)
+    (br, bϕ, bz) = compute_magnetic_field(cset, [r, ϕ, z])
     dr = r * br/bϕ
     dz = r * bz/bϕ
     return SVector{2,T}(dr, dz)
