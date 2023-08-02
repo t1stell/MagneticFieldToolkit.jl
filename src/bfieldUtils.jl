@@ -257,7 +257,7 @@ function compute_magnetic_field(itp::MagneticField{T}, cc::Cylindrical) where {T
     return SVector(Br, Bϕ, Bz)
 end
 
-function compute_magnetic_field(itp::MagneticField{T}, coords::C) where {T, C<:AbstractArray}
+function compute_magnetic_field(itp::MagneticField{T}, coords::C; xyz=false) where {T, C<:AbstractArray}
     if xyz
         return compute_magnetic_field(itp, SVector{3}(coords))
     else

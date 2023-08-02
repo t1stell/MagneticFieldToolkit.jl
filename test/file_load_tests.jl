@@ -26,10 +26,12 @@
     @test isapprox(p1[1], 0.0, atol=atol)
     @test isapprox(p1[2], -86.7585154769, atol=atol)
     @test isapprox(p1[3], -49.3413864929, atol=atol)
+    @test p1 == Tuple(compute_magnetic_field(mg, [1.41, 0.0, 0.0]))
     p2 = mg(1.42, 0.1, 0.1)
     @test isapprox(p2[1], 20.025683282642692, atol = atol)
     @test isapprox(p2[2], -78.886457262367, atol = atol)
     @test isapprox(p2[3], -41.46015776598917, atol = atol)
+    @test p2 == Tuple(compute_magnetic_field(mg, [1.42, 0.1, 0.1]))
   end
   bmwname = joinpath(@__DIR__, "bmw_julia_test.nc")
   bmw = read_bmw(bmwname)
