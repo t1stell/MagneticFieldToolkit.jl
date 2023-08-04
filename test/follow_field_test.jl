@@ -9,7 +9,7 @@
     r_grid = reshape(repeat(r,outer=length(z)*length(θ)),fullSize)
     θ_grid = reshape(repeat(θ,inner=length(r),outer=length(z)),fullSize)
     z_grid = reshape(repeat(z,inner=length(r)*length(θ)),fullSize)
-    field_coords = StructArray{Cylindrical}((r_grid, θ_grid, z_grid)) 
+    field_coords = StructArray{Cylindrical}((r_grid, θ_grid, z_grid))
 
     Br = zeros(length(r), length(θ), length(z))
     Bz = similar(Br)

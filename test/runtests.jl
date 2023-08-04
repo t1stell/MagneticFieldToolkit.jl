@@ -1,7 +1,9 @@
-using MagneticFieldToolkit
+using PlasmaEquilibriumToolkit
 using StaticArrays
+using StructArrays
 using CoordinateTransformations
 using StellaratorGrids
+using MagneticFieldToolkit
 using Test
 
 @testset "MagneticFieldToolkit.jl" begin
