@@ -84,9 +84,16 @@
             @test isapprox(u[1], 10.0, rtol=rtol_lo)
             @test abs(u[2]) < 1.0E-13
         end
-
     end
 
+    @testset "check diffuse function" begin
+        cc = Cylindrical(1.03, 0.0, 0.0)
+        ccn = MagneticFieldToolkit.diffuse(cc, mg, 0.1)
+        xyz1 = CartesianFromCylindrical()(cc)
+        xyz2 = CartesianFromCylindrical()(ccn)
+        dist = sqrt(sum((xyz2 .- xyz1).^2))
+        @test isapprox(dist, 0.1, rtol=rtol)
+    end
 end
 
 

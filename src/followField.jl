@@ -36,7 +36,17 @@ function InterpolationParameters(cset::CoilSet{T}) where {T}
   return InterpolationParameters{T}(cset, values, ϕ_max, r_min, r_max, z_min, z_max)
 end
 
-  
+function diffuse(cc::Cylindrical, fieldinfo::Union{MagneticField{T}, CoilSet{T}}, D::Float64) where {T}
+    xyz = CartesianFromCylindrical()(cc)
+    rand_vec = randn(3) #random isotropic vector
+    Bxyz = compute_magnetic_field(fieldinfo, xyz)
+    rand_perp = cross(rand_vec, Bxyz) #random perpendicular vector
+    rand_perp /= norm(rand_perp)
+    rand_perp *= D
+    xyzn = xyz .+ rand_perp
+    return CylindricalFromCartesian()(xyzn)
+end
+      
   
 function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                       rϕz::Array{Float64},
@@ -46,7 +56,7 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                       poincare_res::Real=2π
                      ) where {T}
     ϕ_start = rϕz[2]
-    u = @SVector [rϕz[1], rϕz[3]]
+    u = @MVector [rϕz[1], rϕz[3]]
     ϕ_span = (ϕ_start,ϕ_end)
     params = InterpolationParameters(fieldinfo)
     prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
@@ -67,7 +77,7 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
 end
 """
     function follow_to_wall(fieldinfo, rϕz, ϕ_end, wall, wall_inverse;
-                            ϕ_step = π/25, poincare=fase,
+                            ϕ_step = π/25, poincare=false,
                             poincare_res = 2π, wall_res = 128, rtol = 1.0E-6
                             diffusion = 0.0)
 
@@ -105,15 +115,16 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
 
     wall_at_t = Array{Tuple{T,T}}(undef, wall_res) #holder for the wall at a given toroidal value 
     ϕ_start = rϕz[2] #starting toroidal angle
-    u = @SVector [rϕz[1], rϕz[3]] #starting u vector, (R, Z).  
+    u = @MVector [rϕz[1], rϕz[3]] #starting u vector, (R, Z).  
     start_inside = true #flag for whether we start inside the boundary
     last_good = rϕz[:] #tracker for the last good point
     penult_good = rϕz[:] #tracker for the penultimate point (needed for diffusion)
+    direction = sign(ϕ_end - ϕ_start)
 
     # this is a function used in the callback, it checks if we are currently on the "correct" side
     # of all the walls
-    function outside_bounds(u::SVector{2, F}, t::F) where {F <: AbstractFloat}
-     
+    function outside_bounds(u::MVector{2, F}, t::F) where {F <: AbstractFloat}
+        #println("checking bounds") 
         outside = false
         θs = range(0, 2π, wall_res)
 
@@ -122,13 +133,13 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
             for i in length(wall)
                 #note the wall is periodic by default, will need to fix that for finite extent walls
                 wall_at_t = [(wall[i].R(θ, t), wall[i].Z(θ, t)) for θ in θs]
-                if !in_surface(u, wall_at_t, inverse=wall_inverse[i])
+                if !in_surface(SVector(u), wall_at_t, inverse=wall_inverse[i])
                     return true
                 end
             end
         else
             wall_at_t = [(wall.R(θ, t), wall.Z(θ, t)) for θ in θs]
-            if !in_surface(u, wall_at_t, inverse=wall_inverse)
+            if !in_surface(SVector(u), wall_at_t, inverse=wall_inverse)
                 return true
             end
         end
@@ -137,6 +148,33 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
         return outside
     end
     
+    function diffuse_affect!(integrator)
+        #println("diffusing")
+        if diffusion <= 0.0
+            return
+        end
+        u = integrator.u
+        t = integrator.t
+        cc = Cylindrical(u[1], t, u[2])
+        dist = sqrt(sum((last_good .- penult_good).^2))
+        ccn = diffuse(cc, fieldinfo, dist*diffusion)
+        offset = round((cc.θ - ccn.θ)/π) * π
+        #println(cc.θ," ",ccn.θ," ",offset)
+
+        integrator.u[1] = ccn.r
+        integrator.u[2] = ccn.z
+        integrator.t = ccn.θ + offset
+
+        if (direction < 0 && integrator.t < ϕ_end) || (direction > 0 && integrator.t > ϕ_end)
+            #integrator.t = ϕ_end
+            terminate!(integrator)
+        end
+        
+        if outside_bounds(integrator.u, integrator.t)
+            terminate!(integrator)
+        end
+        
+    end
     
     #before starting check if we're outside bounds
     #don't return immediately.  To retain the correct output structure, make the follower immediately exit
@@ -152,9 +190,11 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params) #the ODE problem to solve
     condition_wall(u, t, integrator) = outside_bounds(u, t) #The bound condition
     stop_affect!(integrator) = terminate!(integrator) #identify the affect used for the bound condition
+    condition_always(u, t, integrator) = true
     cb_wall = DiscreteCallback(condition_wall, stop_affect!) #set up the actual bound
     #diffusion goes here
-    cbset = CallbackSet(cb_wall) #make it into a set, both are DiscreteCallbacks so they'll be checked in order
+    cb_diffusion = DiscreteCallback(condition_always, diffuse_affect!) # do this at every integration step
+    cbset = CallbackSet(cb_wall, cb_diffusion) #make it into a set, both are DiscreteCallbacks so they'll be checked in order
 
     #This section creates an array of values for the integrator to save at, at the resolution of poincare_res
     if poincare
@@ -182,7 +222,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     t_end = a.t[end]
     u_end = a.u[end]
     while tolcheck > rtol
-        u = @SVector [last_good[1], last_good[3]] 
+        u = @MVector [last_good[1], last_good[3]] 
         ϕ_span = (last_good[2], a.t[end])
         prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
         #note do not use diffusion for this, do not use the full cbset
@@ -241,7 +281,7 @@ function field_deriv_ϕ(u::AbstractVector,
   brϕz = compute_magnetic_field(itp, cc) 
   dr = u[1] * brϕz[1]/brϕz[2]
   dz = u[1] * brϕz[3]/brϕz[2]
-  return SVector{2,T}(dr, dz)
+  return MVector{2,T}(dr, dz)
 end
 
 function field_deriv_ϕ( u::AbstractVector,
@@ -255,7 +295,7 @@ function field_deriv_ϕ( u::AbstractVector,
     (br, bϕ, bz) = compute_magnetic_field(cset, [r, ϕ, z])
     dr = r * br/bϕ
     dz = r * bz/bϕ
-    return SVector{2,T}(dr, dz)
+    return MVector{2,T}(dr, dz)
 end
 
 #todo: fix this. right now it doesn't seem to know how far to follow
