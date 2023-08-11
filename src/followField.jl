@@ -125,27 +125,36 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     # of all the walls
     function outside_bounds(u::MVector{2, F}, t::F) where {F <: AbstractFloat}
         #println("checking bounds") 
-        outside = false
+        outside = 0
         θs = range(0, 2π, wall_res)
 
         #different work flows depending on the type of wall (TODO: move these subfunctions into StellaratorGrids and use multiple dispatch)
         if typeof(wall) <: AbstractArray
-            for i in length(wall)
+            for i in 1:length(wall)
                 #note the wall is periodic by default, will need to fix that for finite extent walls
                 wall_at_t = [(wall[i].R(θ, t), wall[i].Z(θ, t)) for θ in θs]
                 if !in_surface(SVector(u), wall_at_t, inverse=wall_inverse[i])
-                    return true
+                    return i
                 end
             end
         else
             wall_at_t = [(wall.R(θ, t), wall.Z(θ, t)) for θ in θs]
             if !in_surface(SVector(u), wall_at_t, inverse=wall_inverse)
-                return true
+                return 1
             end
         end
         penult_good = copy(last_good) #if we don't copy, it will just pass by reference
         last_good = [u[1], t, u[2]]
         return outside
+    end
+
+    function outside_bounds_bool(u::MVector{2, F}, t::F) where {F <: AbstractFloat}
+        v = outside_bounds(u, t)
+        if v == 0
+            return false
+        else
+            return true
+        end
     end
     
     function diffuse_affect!(integrator)
@@ -170,7 +179,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
             terminate!(integrator)
         end
         
-        if outside_bounds(integrator.u, integrator.t)
+        if outside_bounds_bool(integrator.u, integrator.t)
             terminate!(integrator)
         end
         
@@ -179,7 +188,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     #before starting check if we're outside bounds
     #don't return immediately.  To retain the correct output structure, make the follower immediately exit
     #by setting end = start
-    if outside_bounds(u, ϕ_start)
+    if outside_bounds_bool(u, ϕ_start)
         ϕ_end = ϕ_start
         start_inside = false
     end
@@ -188,7 +197,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     ϕ_span = (ϕ_start,ϕ_end)
     params = InterpolationParameters(fieldinfo) #struct with calculation info
     prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params) #the ODE problem to solve
-    condition_wall(u, t, integrator) = outside_bounds(u, t) #The bound condition
+    condition_wall(u, t, integrator) = outside_bounds_bool(u, t) #The bound condition
     stop_affect!(integrator) = terminate!(integrator) #identify the affect used for the bound condition
     condition_always(u, t, integrator) = true
     cb_wall = DiscreteCallback(condition_wall, stop_affect!) #set up the actual bound
@@ -221,6 +230,8 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     c = 0
     t_end = a.t[end]
     u_end = a.u[end]
+    #find the target
+    struck_target = outside_bounds(u_end, t_end) 
     while tolcheck > rtol
         u = @MVector [last_good[1], last_good[3]] 
         ϕ_span = (last_good[2], a.t[end])
@@ -240,7 +251,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     # add the points to the end (note there will be some bad points prior to this, should we remove them?`
     push!(a.t, t_end) 
     push!(a.u, u_end)
-    return a
+    return a, struck_target
 end
 
 
