@@ -190,6 +190,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     #by setting end = start
     if outside_bounds_bool(u, ϕ_start)
         ϕ_end = ϕ_start
+        struck_target = outside_bounds(u, ϕ_start)
         start_inside = false
     end
 
@@ -222,7 +223,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
 
     #Find the last step, we do this by starting at the last good point and gradually shrinking
     if !start_inside
-        return a #we checked this earlier
+        return a, struck_target #we checked this earlier
     end
 
     tolcheck = abs(a.t[end] - last_good[2]) #distance between the integrator final point, and the last known point inside the boundary

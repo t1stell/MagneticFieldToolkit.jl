@@ -51,28 +51,31 @@
     @testset "Follow a point to a wall" begin
         for R in range(1.03, 1.18, 6)
             rθz = [R, 0.0, 0.0]
-            a = follow_to_wall(mg, rθz, 2π, ves, false, ϕ_step = ϕ_step, rtol=1.0E-10)
+            (a, s) = follow_to_wall(mg, rθz, 2π, ves, false, ϕ_step = ϕ_step, rtol=1.0E-10)
             @test isapprox(R, a.u[end][1], rtol=rtol)
             #the toroidal direction is only valid to the resolution of the wall
             θg = m*R+b
             @test isapprox(a.t[end], θg, rtol=rtol_lo)
+            @test s == 1
          end
     end
     @testset "Follow backwards" begin
         for R in range(1.03, 1.18, 6)
             rθz = [R, 0.0, 0.0]
-            a = follow_to_wall(mg, rθz, -2π, ves, false, ϕ_step = ϕ_step, rtol=1.0E-10)
+            (a, s) = follow_to_wall(mg, rθz, -2π, ves, false, ϕ_step = ϕ_step, rtol=1.0E-10)
             @test isapprox(R, a.u[end][1], rtol=rtol)
             θg =  -(m*R+b)
             @test isapprox(a.t[end], θg, rtol=rtol_lo)
+            @test s == 1
         end
     end
 
     @testset "Check out of bounds initial point" begin
-        a = follow_to_wall(mg, [1.3, 0.2, 0.5], 2π, ves, false)
+        (a, s) = follow_to_wall(mg, [1.3, 0.2, 0.5], 2π, ves, false)
         @test isapprox(a.u[end][1], 1.3, rtol=rtol)
         @test isapprox(a.u[end][2], 0.5, rtol=rtol)
         @test isapprox(a.t[end], 0.2, rtol=rtol)
+        @test s == 1
     end
 
 
