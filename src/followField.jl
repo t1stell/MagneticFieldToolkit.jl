@@ -131,14 +131,27 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
         #different work flows depending on the type of wall (TODO: move these subfunctions into StellaratorGrids and use multiple dispatch)
         if typeof(wall) <: AbstractArray
             for i in 1:length(wall)
+                ζmax = 2*π/wall[i].nfp
+                ζ = mod(t, ζmax)
                 #note the wall is periodic by default, will need to fix that for finite extent walls
-                wall_at_t = [(wall[i].R(θ, t), wall[i].Z(θ, t)) for θ in θs]
+                try
+                    wall_at_t = [(wall[i].R(θ, ζ), wall[i].Z(θ, ζ)) for θ in θs]
+                catch
+                    continue
+                end
                 if !in_surface(SVector(u), wall_at_t, inverse=wall_inverse[i])
                     return i
                 end
             end
         else
-            wall_at_t = [(wall.R(θ, t), wall.Z(θ, t)) for θ in θs]
+
+            ζmax = 2*π/wall.nfp
+            ζ = mod(t, ζmax)
+            try
+                wall_at_t = [(wall.R(θ, ζ), wall.Z(θ, ζ)) for θ in θs]
+            catch
+                return 0
+            end
             if !in_surface(SVector(u), wall_at_t, inverse=wall_inverse)
                 return 1
             end
