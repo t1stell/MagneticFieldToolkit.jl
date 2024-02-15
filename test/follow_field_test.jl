@@ -4,7 +4,7 @@
     rtol_lo = 1.0E-5
     r = range(0.8, 1.2, 50)
     z = range(-0.2, 0.2, 50)
-    θ = range(0, π/5, 50)
+    θ = range(0, 2π/5, 100)
     fullSize = (length(r), length(θ), length(z))
     r_grid = reshape(repeat(r,outer=length(z)*length(θ)),fullSize)
     θ_grid = reshape(repeat(θ,inner=length(r),outer=length(z)),fullSize)
@@ -97,6 +97,39 @@
         dist = sqrt(sum((xyz2 .- xyz1).^2))
         @test isapprox(dist, 0.1, rtol=rtol)
     end
+
+    function make_fake_poincare(iota::Real, nfp::Integer)
+        iota_per_period = iota/nfp
+        R0 = 1.0
+        a = 0.1
+        npoints = 10000
+        R_poincare = [R0 + a*cos(i*iota_per_period*2*π) for i in 1:npoints]
+        Z_poincare = [a*sin(i*iota_per_period*2*π) for i in 1:npoints]
+        return R_poincare, Z_poincare 
+    end
+
+    @testset "Test iota calculation" begin
+        #test iota calculation with known iota
+        nfp = 5
+        target_iota = 1.2
+        R_poincare, Z_poincare = make_fake_poincare(target_iota, nfp)
+        iota = iota_from_poincare(R_poincare, Z_poincare, nfp)
+        @test isapprox(target_iota, iota, rtol=rtol)#given resolutions, this should be exact
+    end
+
+    @testset "test_flux_calculation" begin
+        
+        target_iota = sqrt(2) #use an irrational value
+        nfp = 5
+        R_poincare, Z_poincare = make_fake_poincare(target_iota, nfp)
+        
+        itp = MagneticFieldToolkit.make_interpolation(R_poincare, Z_poincare)
+        tflux = MagneticFieldToolkit.toroidal_flux_integration(mg, itp) 
+        @test isapprox(tflux, π*0.1^2, rtol=rtol_lo)
+    end
+
+
+
 end
 
 

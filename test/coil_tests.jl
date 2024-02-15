@@ -125,8 +125,6 @@
   @testset "writing/reading an mgrid h5 file" begin
     mgh5 = read_mgrid_h5(savename)
     (b, a) = mgh5(10.0, 0.0, 0.0, [1.0])
-    println("h5: b ",b)
-    println("h5: a ",a)
 
     @test abs(b[1]) < 1.0E-20  
     @test abs(b[3]) < 1.0E-20  

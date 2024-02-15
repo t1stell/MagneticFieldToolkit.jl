@@ -110,10 +110,10 @@ end
 function toroidal_flux_integration(mgrid::Union{MagneticField{T}, CoilSet{T}}, 
                               itp::Interpolations.Extrapolation; 
                               ) where {T}
-    ϕ = π/mg.nfp
+    ϕ = π/mgrid.nfp
     rmin = itp.itp.knots[1][1]
     rmax = itp.itp.knots[1][end]
-    println(rmin," ",rmax)
+    
     function flux_integrand(v::SVector{R}) where {R}
         r = v[1]
         if r < rmin || r > rmax
@@ -149,7 +149,7 @@ end
 """
 function toroidal_flux(mgrid::Union{MagneticField{T}, CoilSet{T}},
                        start_radius::Real) where {T}
-    r,z = poincare_plot_at_half_radius(mg, start_radius)
+    r,z = poincare_plot_at_half_radius(mgrid, start_radius)
     itp = make_interpolation(r, z)
     return toroidal_flux_integration(mgrid, itp)
 end
