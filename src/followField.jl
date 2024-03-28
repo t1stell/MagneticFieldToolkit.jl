@@ -110,7 +110,8 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                         poincare_res::Real=2π,
                         wall_res::Integer = 128, #eventually allow this to be a vector
                         rtol::Float64=1.0E-6, #tolerance for the last step
-                        diffusion::Float64=0.0
+                        diffusion::Float64=0.0,
+                        maxiters::Int = 10^7
                        ) where {T}
 
     wall_at_t = Array{Tuple{T,T}}(undef, wall_res) #holder for the wall at a given toroidal value 
@@ -210,7 +211,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
 
     ϕ_span = (ϕ_start,ϕ_end)
     params = InterpolationParameters(fieldinfo) #struct with calculation info
-    prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params) #the ODE problem to solve
+    prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params, maxiters=maxiters) #the ODE problem to solve
     condition_wall(u, t, integrator) = outside_bounds_bool(u, t) #The bound condition
     stop_affect!(integrator) = terminate!(integrator) #identify the affect used for the bound condition
     condition_always(u, t, integrator) = true
@@ -249,7 +250,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     while tolcheck > rtol
         u = @MVector [last_good[1], last_good[3]] 
         ϕ_span = (last_good[2], a.t[end])
-        prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
+        prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params, maxiters=maxiters)
         #note do not use diffusion for this, do not use the full cbset
         a_new = solve(prob, Tsit5(), dtmax = dϕ_new, callback = cb_wall) #set up a new problem
         t_end = a_new.t[end]
