@@ -53,13 +53,14 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                       ϕ_end::Float64;
                       ϕ_step::Float64=π/25,
                       poincare::Bool=false,
-                      poincare_res::Real=2π
+                      poincare_res::Real=2π,
+                      maxiters::Int = 10^7
                      ) where {T}
     ϕ_start = rϕz[2]
     u = @MVector [rϕz[1], rϕz[3]]
     ϕ_span = (ϕ_start,ϕ_end)
     params = InterpolationParameters(fieldinfo)
-    prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params)
+    prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params,maxiters=maxiters)
     if poincare
         if poincare_res == 2π
           ϕ_max = params.ϕ_max
