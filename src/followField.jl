@@ -68,7 +68,7 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
           ϕ_max = poincare_res
         end
         N = abs(ϕ_end - ϕ_start)/(ϕ_max)
-        saveat = [i * (ϕ_max) + ϕ_start for i in 1:N]
+        saveat = [i * (ϕ_max) + ϕ_start for i in 0:N-1]
     else
         saveat = []
     end
