@@ -43,6 +43,7 @@
         Rp[:,iζ] = 1.0 .+ (a.* cos.(θrange))
         θs[:,iζ] = θrange
     end
+    println(Rp[:,1])
     (R,Z) = StellaratorGrids.create_wall_splines(ζs, θrange, Rp, Zp, "")
     ves = FlareWall(nζ, nθ, Rp, Zp, collect(ζs), θs, 2, R, Z, "")
     m = π/2 / (1.02-1.2)
