@@ -172,7 +172,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
         end
     end
     
-    function diffuse_affect!(integrator)
+    function diffuse_affect!(integrator::OrdinaryDiffEq.ODEIntegrator)
         #println("diffusing")
         if diffusion <= 0.0
             return
@@ -182,12 +182,15 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
         cc = Cylindrical(u[1], t, u[2])
         dist = sqrt(sum((last_good .- penult_good).^2))
         ccn = diffuse(cc, fieldinfo, dist*diffusion)
-        offset = round((cc.θ - ccn.θ)/π) * π
+        #offset = round((cc.θ - ccn.θ)/π) * π
         #println(cc.θ," ",ccn.θ," ",offset)
 
         integrator.u[1] = ccn.r
         integrator.u[2] = ccn.z
-        integrator.t = ccn.θ + offset
+
+        #Updating the θ value seemed to cause a memory leak for unknown reasons
+        #we'll comment this out for now
+        #integrator.t = ccn.θ + offset
 
         if (direction < 0 && integrator.t < ϕ_end) || (direction > 0 && integrator.t > ϕ_end)
             #integrator.t = ϕ_end
