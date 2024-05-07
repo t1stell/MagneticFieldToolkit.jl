@@ -104,8 +104,8 @@ also calculate intersections with the wall.
 function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                         rϕz::Array{Float64},
                         ϕ_end::Real,
-                        wall::AbstractArray{FlareWall},
-                        wall_inverse::AbstractArray{Bool};
+                        wall::Vector{FlareWall},
+                        wall_inverse::Vector{Bool};
                         ϕ_step::Real=π/25,
                         poincare::Bool=false,
                         poincare_res::Real=2π,
@@ -271,7 +271,10 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                         diffusion::Float64=0.0,
                         maxiters::Int = 10^7
                         ) where {T}
-    return follow_to_wall(fieldinfo, rϕz, ϕ_end, [wall], [wall_inverse], 
+
+    wall_list = Vector{FlareWall}(undef, 1)
+    wall_list[1] = wall
+    return follow_to_wall(fieldinfo, rϕz, ϕ_end, wall_list, [wall_inverse], 
                           ϕ_step = ϕ_step, poincare=poincare, poincare_res=poincare_res,
                           wall_res = wall_res, rtol=rtol, diffusion=diffusion, maxiters=maxiters)
 end
