@@ -103,10 +103,10 @@ also calculate intersections with the wall.
 """
 function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                         rϕz::Array{Float64},
-                        ϕ_end::Float64,
-                        wall::Union{AbstractArray{FlareWall}, FlareWall},
-                        wall_inverse::Union{AbstractArray{Bool}, Bool};
-                        ϕ_step::Float64=π/25,
+                        ϕ_end::Real,
+                        wall::AbstractArray{FlareWall},
+                        wall_inverse::AbstractArray{Bool};
+                        ϕ_step::Real=π/25,
                         poincare::Bool=false,
                         poincare_res::Real=2π,
                         wall_res::Integer = 128, #eventually allow this to be a vector
@@ -131,31 +131,16 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
         θs = range(0, 2π, wall_res)
 
         #different work flows depending on the type of wall (TODO: move these subfunctions into StellaratorGrids and use multiple dispatch)
-        if typeof(wall) <: AbstractArray
-            for i in 1:length(wall)
-                ζmax = 2*π/wall[i].nfp
-                ζ = mod(t, ζmax)
-                #note the wall is periodic by default, will need to fix that for finite extent walls
-                try
-                    wall_at_t = [(wall[i].R(θ, ζ), wall[i].Z(θ, ζ)) for θ in θs]
-                catch
-                    continue
-                end
-                if !in_surface(SVector(u), wall_at_t, inverse=wall_inverse[i])
-                    return i
-                end
-            end
-        else
-
-            ζmax = 2*π/wall.nfp
+        for i in 1:length(wall)
+            ζmax = 2*π/wall[i].nfp
             ζ = mod(t, ζmax)
-            try
-                wall_at_t = [(wall.R(θ, ζ), wall.Z(θ, ζ)) for θ in θs]
-            catch
-                return 0
+            #note the wall is periodic by default, will need to fix that for finite extent walls
+            if ζ < wall[i].ζs[1] || ζ > wall[i].ζs[end]
+                continue
             end
-            if !in_surface(SVector(u), wall_at_t, inverse=wall_inverse)
-                return 1
+            wall_at_t = [(wall[i].R(θ, ζ), wall[i].Z(θ, ζ)) for θ in θs]
+            if !in_surface(SVector(u), wall_at_t, inverse=wall_inverse[i])
+                return i
             end
         end
         penult_good = copy(last_good) #if we don't copy, it will just pass by reference
@@ -273,6 +258,23 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     return a, struck_target
 end
 
+function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
+                        rϕz::Array{Float64},
+                        ϕ_end::Real,
+                        wall::FlareWall,
+                        wall_inverse::Bool;
+                        ϕ_step::Real=π/25,
+                        poincare::Bool=false,
+                        poincare_res::Real=2π,
+                        wall_res::Integer = 128, #eventually allow this to be a vector
+                        rtol::Float64=1.0E-6, #tolerance for the last step
+                        diffusion::Float64=0.0,
+                        maxiters::Int = 10^7
+                        ) where {T}
+    return follow_to_wall(fieldinfo, rϕz, ϕ_end, [wall], [wall_inverse], 
+                          ϕ_step = ϕ_step, poincare=poincare, poincare_res=poincare_res,
+                          wall_res = wall_res, rtol=rtol, diffusion=diffusion, maxiters=maxiters)
+end
 
 """
 function follow_field_s(itp::MagneticField{T},
