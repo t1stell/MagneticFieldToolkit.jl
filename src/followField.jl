@@ -138,7 +138,9 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
             if ζ < wall[i].ζs[1] || ζ > wall[i].ζs[end]
                 continue
             end
-            wall_at_t = [(wall[i].R(θ, ζ), wall[i].Z(θ, ζ)) for θ in θs]
+            for (j,θ) in enumerate(θs)
+                wall_at_t[j] = (wall[i].R(θ, ζ), wall[i].Z(θ, ζ))
+            end
             if wall_inverse[i]
                 if inpolygon(u, wall_at_t, in=true, on=true, out=false)
                     return i
