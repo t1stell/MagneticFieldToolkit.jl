@@ -9,6 +9,7 @@ using OrdinaryDiffEq
 using LinearAlgebra
 using HCubature
 using CoordinateTransformations
+using PolygonOps
 using PlasmaEquilibriumToolkit
 using StellaratorGrids
 

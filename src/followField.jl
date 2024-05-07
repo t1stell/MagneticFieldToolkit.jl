@@ -139,8 +139,14 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                 continue
             end
             wall_at_t = [(wall[i].R(θ, ζ), wall[i].Z(θ, ζ)) for θ in θs]
-            if !in_surface(SVector(u), wall_at_t, inverse=wall_inverse[i])
-                return i
+            if wall_inverse[i]
+                if inpolygon(u, wall_at_t, in=true, on=true, out=false)
+                    return i
+                end
+            else
+                if inpolygon(u, wall_at_t, in=false, on=false, out=true)
+                    return i
+                end
             end
         end
         penult_good = copy(last_good) #if we don't copy, it will just pass by reference
@@ -181,10 +187,11 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
             #integrator.t = ϕ_end
             terminate!(integrator)
         end
-        
-        if outside_bounds_bool(integrator.u, integrator.t)
-            terminate!(integrator)
-        end
+       
+        #this check slows things down considerably, let's remove it 
+        #if outside_bounds_bool(integrator.u, integrator.t)
+        #    terminate!(integrator)
+        #end
         
     end
     
@@ -207,7 +214,7 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     cb_wall = DiscreteCallback(condition_wall, stop_affect!) #set up the actual bound
     #diffusion goes here
     cb_diffusion = DiscreteCallback(condition_always, diffuse_affect!) # do this at every integration step
-    cbset = CallbackSet(cb_wall, cb_diffusion) #make it into a set, both are DiscreteCallbacks so they'll be checked in order
+    cbset = CallbackSet(cb_diffusion, cb_wall) #make it into a set, both are DiscreteCallbacks so they'll be checked in order
 
     #This section creates an array of values for the integrator to save at, at the resolution of poincare_res
     if poincare
