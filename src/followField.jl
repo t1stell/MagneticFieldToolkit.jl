@@ -114,8 +114,8 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                         diffusion::Float64=0.0,
                         maxiters::Int = 10^7
                        ) where {T}
-
-    wall_at_t = Array{Tuple{T,T}}(undef, wall_res) #holder for the wall at a given toroidal value 
+    rwall = Vector{T}(undef, wall_res)
+    zwall = Vector{T}(undef, wall_res)
     ϕ_start = rϕz[2] #starting toroidal angle
     u = @MVector [rϕz[1], rϕz[3]] #starting u vector, (R, Z).  
     start_inside = true #flag for whether we start inside the boundary
@@ -139,16 +139,11 @@ function follow_to_wall(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                 continue
             end
             for (j,θ) in enumerate(θs)
-                wall_at_t[j] = (wall[i].R(θ, ζ), wall[i].Z(θ, ζ))
+                rwall[j] = wall[i].R(θ, ζ)
+                zwall[j] = wall[i].Z(θ, ζ)
             end
-            if wall_inverse[i]
-                if inpolygon(u, wall_at_t, in=true, on=true, out=false)
-                    return i
-                end
-            else
-                if inpolygon(u, wall_at_t, in=false, on=false, out=true)
-                    return i
-                end
+            if !in_surface(u[1], u[2], rwall, zwall, inverse=wall_inverse[i])
+                return i
             end
         end
         penult_good = copy(last_good) #if we don't copy, it will just pass by reference
