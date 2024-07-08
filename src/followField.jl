@@ -58,6 +58,9 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                      ) where {T}
     ϕ_start = rϕz[2]
     u = @MVector [rϕz[1], rϕz[3]]
+    if poincare
+        ϕ_end = ϕ_end + poincare_res / 2.0
+    end
     ϕ_span = (ϕ_start,ϕ_end)
     params = InterpolationParameters(fieldinfo)
     prob = ODEProblem(field_deriv_ϕ, u, ϕ_span, params,maxiters=maxiters)
