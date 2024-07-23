@@ -55,7 +55,7 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                       poincare::Bool=false,
                       poincare_res::Real=2π,
                       maxiters::Int = 10^7,
-                      include_first::Bool = true
+                      include_first::Bool = true,
                       include_last::Bool = true
                      ) where {T}
     ϕ_start = rϕz[2]
