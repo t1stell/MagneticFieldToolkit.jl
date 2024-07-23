@@ -56,6 +56,7 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
                       poincare_res::Real=2π,
                       maxiters::Int = 10^7,
                       include_first::Bool = true
+                      include_last::Bool = true
                      ) where {T}
     ϕ_start = rϕz[2]
     u = @MVector [rϕz[1], rϕz[3]]
@@ -65,6 +66,13 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
     else
         start_index = 1
     end
+
+    if include_last
+        final_adjust = 0
+    else
+        final_adjust = 1
+    end
+
     #if poincare
     #    ϕ_end = ϕ_end + poincare_res / 2.0
     #end
@@ -78,7 +86,7 @@ function follow_field(fieldinfo::Union{MagneticField{T}, CoilSet{T}},
           ϕ_max = poincare_res
         end
         N = abs(ϕ_end - ϕ_start)/(ϕ_max)
-        saveat = [i * (ϕ_max) + ϕ_start for i in start_index:N]
+        saveat = [i * (ϕ_max) + ϕ_start for i in start_index:N - final_adjust]
     else
         saveat = []
     end
