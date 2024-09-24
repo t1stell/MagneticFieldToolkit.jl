@@ -16,6 +16,7 @@ using StellaratorGrids
 
 # File load 
 export read_mgrid, read_bmw, read_vmec_coils, read_mgrid_h5, read_coil_files
+export read_hint_field
 
 #Structs and constructors
 export CoilSet

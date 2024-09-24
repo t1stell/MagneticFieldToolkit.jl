@@ -205,6 +205,7 @@ function read_mgrid(filename::AbstractString,
     return MagneticField(field_coords, Brf, Bθf, Bzf, Arf, Aθf, Azf, nfp=nfp)
 
 end
+
 """
   read_mgrid_h5(filename; currents=nothing)
 
@@ -296,3 +297,108 @@ function read_mgrid_h5(filename::AbstractString; currents=nothing)
   end
   
 end  
+
+"""
+   read_hint_field(filename; field_index=nothing)
+
+Reads a hint file and outputs a field object
+
+By default the loader will choose the highest iteration value in the h5
+file.  If you would like a different iteration, it can be set
+with the `field_index` keyword
+
+If the hint run did not complete it will not have 
+the correct settings for rmin, rmax etc.  
+There are two options here.  Option 1 is that you can set the keywords:
+`rmin`, `rmax`, `zmin`, `zmax` and `nfp`
+Option 2 is you can include a HINT mgrid file and it will populate
+the values from it.  Option 2 will override option 1.
+"""
+function read_hint_field(filename::AbstractString; 
+                         field_index=nothing,
+                         rmin::Real = 0.0,
+                         rmax::Real = 0.0,
+                         zmin::Real = 0.0,
+                         zmax::Real = 0.0,
+                         nfp::Real = 0.0,
+                         mgrid = nothing)
+    file_id = h5open(filename)
+    keynames = keys(file_id)
+    if field_index == nothing
+        #find the last index
+        for i in 1:length(keynames)
+            if !occursin("000", keynames[i])
+                field_index = i-1
+                break
+            end
+        end
+    end
+    field_name = keynames[field_index]
+
+    # load the rmin values from the hint h5 file
+    if mgrid == nothing
+        if rmin == 0.0
+            rmin = read(file_id["rminb"])
+        end
+        if rmax == 0.0
+            rmax = read(file_id["rmaxb"])
+        end
+        if zmin == 0.0
+            zmin = read(file_id["zminb"])
+        end
+        if zmax == 0.0
+            zmax = read(file_id["zmaxb"])
+        end
+        if nfp == 0.0
+            nfp = read(file_id["mtor"])
+        end
+    end
+
+
+    #set the rmin, rmax if in the file, we don't have
+    #a working file yet to test this, so will do it later
+    if mgrid != nothing
+        mgrid_file = h5open(mgrid)
+        rmin = read(mgrid_file["rminb"])
+        rmax = read(mgrid_file["rmaxb"])
+        zmin = read(mgrid_file["zminb"])
+        zmax = read(mgrid_file["zmaxb"])
+        nfp  = read(mgrid_file["mtor"])
+    end
+    
+    #get the size
+    (nr, nz, nθ) = size(file_id[field_name]["B_R"])
+    Br = Array{Float64}(undef, nr, nθ, nz)
+    Bz = similar(Br)
+    Bθ = similar(Br)
+
+    Br = permutedims(file_id[field_name]["B_R"][:,:,:], [1,3,2])
+    Bz = permutedims(file_id[field_name]["B_Z"][:,:,:], [1,3,2])
+    Bθ = permutedims(file_id[field_name]["B_phi"][:,:,:], [1,3,2])
+
+    Brf = Array{Float64}(undef, nr, nθ+1, nz)
+    Bzf = similar(Brf)
+    Bθf = similar(Brf)
+    
+    Brf[:,1:end-1,:] = Br[:,:,:]
+    Bzf[:,1:end-1,:] = Bz[:,:,:]
+    Bθf[:,1:end-1,:] = Bθ[:,:,:]
+    
+    Brf[:,end,:] = Br[:,1,:]
+    Bzf[:,end,:] = Bz[:,1,:]
+    Bθf[:,end,:] = Bθ[:,1,:]
+
+    
+    r = range(rmin, rmax, nr)
+    z = range(zmin, zmax, nz)
+    #Δθ = (2*π/nfp)/(nθ + 1)
+    θ = range(0, 2*π/nfp, nθ+1)
+
+    fullSize = (length(r), length(θ), length(z))
+    r_grid = reshape(repeat(r,outer=length(z)*length(θ)),fullSize)
+    θ_grid = reshape(repeat(θ,inner=length(r),outer=length(z)),fullSize)
+    z_grid = reshape(repeat(z,inner=length(r)*length(θ)),fullSize)
+    field_coords = StructArray{Cylindrical}((r_grid, θ_grid, z_grid))
+    return MagneticField(field_coords, Brf, Bθf, Bzf, nfp=nfp)
+    
+end
