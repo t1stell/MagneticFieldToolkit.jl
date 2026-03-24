@@ -1,7 +1,7 @@
 name = "MagneticFieldToolkit"
 uuid = "83d2fe31-06aa-4aa7-b1a8-501a9ae152cf"
-authors = ["Benjamin Faber <bfaber@wisc.edu>", "Aaron Bader <abader@engr.wisc.edu>", "Max Ruth <mer335@cornell.edu>"]
 version = "0.1.11"
+authors = ["Benjamin Faber <bfaber@wisc.edu>", "Aaron Bader <abader@engr.wisc.edu>", "Max Ruth <mer335@cornell.edu>"]
 
 [deps]
 CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
@@ -20,7 +20,7 @@ StellaratorGrids = "2fa94731-8949-47e3-a940-b1a4085b105f"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [compat]
-CairoMakie = "0.7, 0.8, 0.9"
+CairoMakie = "0.7, 0.8, 0.9, 0.15"
 CoordinateTransformations = "0.6"
 HCubature = "1.1"
 Interpolations = "0.14.3"
